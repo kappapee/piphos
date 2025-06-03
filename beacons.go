@@ -22,8 +22,7 @@ func selectBeacon(beacon string) (Beacon, error) {
 	}
 
 	if len(beacons) == 0 {
-		err := errors.New("beacons list is empty")
-		return Beacon{}, err
+		return Beacon{}, errors.New("beacons list is empty")
 	}
 
 	switch beacon {
@@ -67,7 +66,6 @@ func contactBeacon(client *http.Client, beacon Beacon) (string, error) {
 		return bodyString, nil
 	} else {
 		log.Printf("expected 200 Status OK from beacon %s, got: %d", beacon.Name, resp.StatusCode)
-		err = errors.New("did not get 200 Status OK")
-		return "", err
+		return "", errors.New("did not get 200 Status OK")
 	}
 }
