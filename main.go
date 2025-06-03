@@ -24,4 +24,16 @@ func main() {
 		return
 	}
 	fmt.Printf("beacon %s reported public IP: %s\n", beacon.Name, publicIP)
+
+	tender, err := selectTender("github")
+	if err != nil {
+		log.Printf("something went wrong trying to select a tender: %v", err)
+		return
+	}
+
+	tender = loadTenderPayload(tender, publicIP, false)
+
+	err = pushToTender(client, tender)
+
+	fmt.Println("DONE!")
 }
