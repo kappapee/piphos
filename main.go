@@ -8,16 +8,11 @@ import (
 )
 
 func main() {
-	beacons := []Beacon{
-		{Name: "icanhazip", URL: "https://ipv4.icanhazip.com"},
-		{Name: "aws", URL: "https://checkip.amazonaws.com"},
-	}
-
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	beacon, err := selectBeacon(beacons)
+	beacon, err := selectBeacon("haz")
 	if err != nil {
 		log.Printf("something went wrong trying to select a beacon: %v", err)
 		return
