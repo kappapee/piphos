@@ -24,11 +24,7 @@ func selectBeacon(beacons []Beacon) (Beacon, error) {
 	return beacons[r.Intn(len(beacons))], nil
 }
 
-func contactBeacon(beacon Beacon) (string, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
+func contactBeacon(client *http.Client, beacon Beacon) (string, error) {
 	req, err := http.NewRequest("GET", beacon.URL, nil)
 	if err != nil {
 		log.Printf("unable to create request to beacon %s: %v", beacon.Name, err)
