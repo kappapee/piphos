@@ -16,28 +16,22 @@ type Beacon struct {
 }
 
 func selectBeacon(beacon string) (Beacon, error) {
-	beacons := map[string]Beacon{
-		"haz": {Name: "icanhazip", URL: "https://ipv4.icanhazip.com"},
-		"aws": {Name: "aws", URL: "https://checkip.amazonaws.com"},
-	}
-
-	if len(beacons) == 0 {
+	if len(BeaconConfig) == 0 {
 		return Beacon{}, errors.New("beacons list is empty")
 	}
 
 	switch beacon {
-	case "aws":
-		return beacons["aws"], nil
-	case "haz":
-		return beacons["haz"], nil
+	case BeaconAws:
+		return BeaconConfig[BeaconAws], nil
+	case BeaconHaz:
+		return BeaconConfig[BeaconHaz], nil
 	default:
-		mapKeys := make([]string, 0, len(beacons))
-		for key := range beacons {
-			mapKeys = append(mapKeys, key)
+		keys := make([]string, 0, len(BeaconConfig))
+		for k := range BeaconConfig {
+			keys = append(keys, k)
 		}
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		return beacons[mapKeys[r.Intn(len(mapKeys))]], nil
-
+		return BeaconConfig[keys[r.Intn(len(keys))]], nil
 	}
 }
 

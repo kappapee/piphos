@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 )
 
 type Tender struct {
@@ -25,41 +25,26 @@ type TenderPayload struct {
 }
 
 func selectTender(tender string) (Tender, error) {
-	tenderToken := os.Getenv("PIPHOS_TOKEN")
-	if tenderToken == "" {
+	if TenderToken == "" {
 		return Tender{}, errors.New("tender token is not set")
 	}
 
-	tenders := map[string]Tender{
-		"github": {
-			Name: "GitHub",
-			URL:  "https://api.github.com/gists",
-			Headers: map[string]string{
-				"Authorization":        "Bearer " + tenderToken,
-				"X-GitHub-Api-Version": "2022-11-28",
-			},
-		},
-		"gitlab": {
-			Name: "GitLab",
-			URL:  "https://gitlab.com/api/v4/snippets",
-			Headers: map[string]string{
-				"PRIVATE-TOKEN": tenderToken,
-			},
-		},
-	}
-
-	if len(tenders) == 0 {
+	if len(TenderConfig) == 0 {
 		return Tender{}, errors.New("tenders list is empty")
 	}
 
+	var selectedTender Tender
 	switch tender {
-	case "github":
-		return tenders["github"], nil
-	case "gitlab":
-		return tenders["gitlab"], nil
+	case TenderGithub:
+		selectedTender = TenderConfig[TenderGithub]
+		selectedTender.Headers["Authorization"] = "Bearer " + TenderToken
+	case TenderGitlab:
+		selectedTender = TenderConfig[TenderGitlab]
+		selectedTender.Headers["PRIVATE-TOKEN"] = TenderToken
 	default:
 		return Tender{}, errors.New("unknown tender requested")
 	}
+	return selectedTender, nil
 }
 
 func loadTenderPayload(tender Tender, ip string, public bool) Tender {
@@ -70,13 +55,13 @@ func loadTenderPayload(tender Tender, ip string, public bool) Tender {
 		visibility = "public"
 	}
 	switch tender.Name {
-	case "GitHub":
+	case TenderGithub:
 		tender.Data = TenderPayload{
 			Description: desc,
 			Public:      public,
 			Files:       map[string]map[string]string{filename: {"content": ip}},
 		}
-	case "GitLab":
+	case TenderGitlab:
 		tender.Data = TenderPayload{
 			Title:      desc,
 			Visibility: visibility,
@@ -100,7 +85,7 @@ func pushToTender(client *http.Client, tender Tender) error {
 
 	req, err := http.NewRequest("POST", tender.URL, bodyReader)
 	if err != nil {
-		log.Printf("unable to create post request to beacon %s: %v", tender.Name, err)
+		log.Printf("unable to create post request to tender %s: %v", tender.Name, err)
 		return err
 	}
 
@@ -110,9 +95,14 @@ func pushToTender(client *http.Client, tender Tender) error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from beacon %s: %v", tender.Name, err)
+		log.Printf("unable to get response from tender %s: %v", tender.Name, err)
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Printf("tender %s returned status %d", tender.Name, resp.StatusCode)
+		return fmt.Errorf("tender returned status %d", resp.StatusCode)
+	}
 	return nil
 }
