@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 type Tender struct {
@@ -24,13 +25,38 @@ type TenderPayload struct {
 	Files       any    `json:"files"`
 }
 
+const (
+	TenderGithub = "github"
+	TenderGitlab = "gitlab"
+)
+
+var TenderToken = os.Getenv("PIPHOS_TOKEN")
+
+var TenderConfig = map[string]Tender{
+	TenderGithub: {
+		Name: TenderGithub,
+		URL:  "https://api.github.com/gists",
+		Headers: map[string]string{
+			"X-GitHub-Api-Version": "2022-11-28",
+			"Content-Type":         "application/json",
+		},
+	},
+	TenderGitlab: {
+		Name: TenderGitlab,
+		URL:  "https://gitlab.com/api/v4/snippets",
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+	},
+}
+
 func selectTender(tender string) (Tender, error) {
 	if TenderToken == "" {
 		return Tender{}, errors.New("tender token is not set")
 	}
 
 	if len(TenderConfig) == 0 {
-		return Tender{}, errors.New("tenders list is empty")
+		return Tender{}, errors.New("no configured tenders found")
 	}
 
 	var selectedTender Tender
@@ -85,7 +111,7 @@ func pushToTender(client *http.Client, tender Tender) error {
 
 	req, err := http.NewRequest("POST", tender.URL, bodyReader)
 	if err != nil {
-		log.Printf("unable to create post request to tender %s: %v", tender.Name, err)
+		log.Printf("unable to create request for tender %s: %v", tender.Name, err)
 		return err
 	}
 
