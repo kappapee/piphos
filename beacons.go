@@ -29,14 +29,20 @@ var BeaconConfig = map[string]Beacon{
 }
 
 func contactBeacon(cfg config.Config, args []string) (string, error) {
-	if len(args) != 1 {
-		return "", fmt.Errorf("usage example: command <beaconName>")
+	if len(args) > 1 {
+		return "", fmt.Errorf("usage example: command [<beaconName>]")
 	}
 	if len(BeaconConfig) == 0 {
 		return "", errors.New("no configured beacons found")
 	}
 
-	beacon := args[0]
+	var beacon string
+
+	if len(args) == 0 {
+		beacon = cfg.Beacon
+	} else {
+		beacon = args[0]
+	}
 
 	var selectedBeacon Beacon
 

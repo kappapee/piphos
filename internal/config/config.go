@@ -15,6 +15,8 @@ type Config struct {
 	Client   *http.Client
 	Hostname string `json:"hostname"`
 	Token    string `json:"token"`
+	Beacon   string `json:"beacon"`
+	Tender   string `json:"tender"`
 }
 
 func Load() (Config, error) {
