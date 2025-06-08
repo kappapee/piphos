@@ -27,19 +27,19 @@ func Load() (Config, error) {
 
 	configFile, err := os.Open(configDir + configFileName)
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
 	}
 	defer configFile.Close()
 
 	config, err := io.ReadAll(configFile)
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
 	}
 
 	var cfg Config
 	err = json.Unmarshal(config, &cfg)
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
 	}
 
 	if cfg.Hostname == "" {
