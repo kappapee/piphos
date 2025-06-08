@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+
+	"github.com/kappapee/piphos/internal/config"
 )
 
 type Tender struct {
@@ -28,9 +29,8 @@ type TenderPayload struct {
 const (
 	TenderGithub = "github"
 	TenderGitlab = "gitlab"
+	TenderTitle  = "piphos"
 )
-
-var TenderToken = os.Getenv("PIPHOS_TOKEN")
 
 var TenderConfig = map[string]Tender{
 	TenderGithub: {
@@ -40,6 +40,10 @@ var TenderConfig = map[string]Tender{
 			"X-GitHub-Api-Version": "2022-11-28",
 			"Content-Type":         "application/json",
 		},
+		Data: TenderPayload{
+			Description: TenderTitle,
+			Public:      false,
+		},
 	},
 	TenderGitlab: {
 		Name: TenderGitlab,
@@ -47,88 +51,66 @@ var TenderConfig = map[string]Tender{
 		Headers: map[string]string{
 			"Content-Type": "application/json",
 		},
+		Data: TenderPayload{
+			Title:      TenderTitle,
+			Visibility: "private",
+		},
 	},
 }
 
-func selectTender(tender string) (Tender, error) {
-	if TenderToken == "" {
-		return Tender{}, errors.New("tender token is not set")
+func pushTender(cfg config.Config, args []string) (string, error) {
+	if len(args) != 2 {
+		return "", fmt.Errorf("usage example: command <tenderName> <ip>")
+	}
+	if len(TenderConfig) == 0 {
+		return "", errors.New("no configured tenders found")
 	}
 
-	if len(TenderConfig) == 0 {
-		return Tender{}, errors.New("no configured tenders found")
-	}
+	tender := args[0]
+	ip := args[1]
 
 	var selectedTender Tender
+
 	switch tender {
 	case TenderGithub:
 		selectedTender = TenderConfig[TenderGithub]
-		selectedTender.Headers["Authorization"] = "Bearer " + TenderToken
+		selectedTender.Headers["Authorization"] = "Bearer " + cfg.Token
+		selectedTender.Data.Files = map[string]map[string]string{cfg.Hostname: {"content": ip}}
 	case TenderGitlab:
 		selectedTender = TenderConfig[TenderGitlab]
-		selectedTender.Headers["PRIVATE-TOKEN"] = TenderToken
+		selectedTender.Headers["PRIVATE-TOKEN"] = cfg.Token
+		selectedTender.Data.Files = []map[string]string{{"file_path": cfg.Hostname, "content": ip}}
 	default:
-		return Tender{}, errors.New("unknown tender requested")
+		return "", errors.New("unknown tender requested")
 	}
-	return selectedTender, nil
-}
 
-func loadTenderPayload(tender Tender, ip string, public bool) Tender {
-	desc := "My server's public IP."
-	filename := "piphos_by_pyculiar_labs"
-	visibility := "private"
-	if public {
-		visibility = "public"
-	}
-	switch tender.Name {
-	case TenderGithub:
-		tender.Data = TenderPayload{
-			Description: desc,
-			Public:      public,
-			Files:       map[string]map[string]string{filename: {"content": ip}},
-		}
-	case TenderGitlab:
-		tender.Data = TenderPayload{
-			Title:      desc,
-			Visibility: visibility,
-			Files: []map[string]string{
-				{"content": ip, "file_path": filename},
-			},
-		}
-	default:
-		tender.Data = TenderPayload{}
-	}
-	return tender
-}
-
-func pushToTender(client *http.Client, tender Tender) error {
-	jsonBody, err := json.Marshal(tender.Data)
+	jsonBody, err := json.Marshal(selectedTender.Data)
 	if err != nil {
-		log.Printf("unable to create json payload for tender %s: %v", tender.Name, err)
-		return err
+		log.Printf("unable to create json payload for tender %s: %v", selectedTender.Name, err)
+		return "", err
 	}
 	bodyReader := bytes.NewReader(jsonBody)
 
-	req, err := http.NewRequest("POST", tender.URL, bodyReader)
+	req, err := http.NewRequest("POST", selectedTender.URL, bodyReader)
 	if err != nil {
-		log.Printf("unable to create request for tender %s: %v", tender.Name, err)
-		return err
+		log.Printf("unable to create request for tender %s: %v", selectedTender.Name, err)
+		return "", err
 	}
 
-	for k, v := range tender.Headers {
+	for k, v := range selectedTender.Headers {
 		req.Header.Set(k, v)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from tender %s: %v", tender.Name, err)
-		return err
+		log.Printf("unable to get response from tender %s: %v", selectedTender.Name, err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("tender %s returned status %d", tender.Name, resp.StatusCode)
-		return fmt.Errorf("tender returned status %d", resp.StatusCode)
+		log.Printf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender returned status %d", resp.StatusCode)
 	}
-	return nil
+	return ip, nil
 }
