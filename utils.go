@@ -42,8 +42,8 @@ func showUsage() {
 	fmt.Println("  push     push public IP to tender")
 	fmt.Println("")
 	fmt.Println("examples:")
-	fmt.Println("  piphos check						# use default beacon")
-	fmt.Println("  piphos check -b aws				# use specific beacon")
-	fmt.Println("  piphos push -t github			# push to specific tender")
-	fmt.Println("  piphos push -t github -b haz		# push to specific tender using specific beacon")
+	fmt.Println("  piphos check                    # use default beacon")
+	fmt.Println("  piphos check -b aws             # use specific beacon")
+	fmt.Println("  piphos push -t github           # push to specific tender")
+	fmt.Println("  piphos push -t github -b haz    # push to specific tender using specific beacon")
 }
