@@ -18,7 +18,6 @@ func validateToken(token, tender string) error {
 	if token == "" {
 		return errors.New("empty token")
 	}
-	// Add provider-specific validation
 	switch tender {
 	case TenderGithub:
 		if !strings.HasPrefix(token, "ghp_") &&
