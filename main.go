@@ -15,11 +15,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.Token == "" {
-		fmt.Println("TOKEN must be set in the configuration file")
-		os.Exit(1)
-	}
-
 	if len(os.Args) < 2 {
 		fmt.Println("usage: piphos <command> [<args>]")
 		os.Exit(1)
