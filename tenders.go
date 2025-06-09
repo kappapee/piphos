@@ -26,6 +26,11 @@ type TenderPayload struct {
 	Files       any    `json:"files"`
 }
 
+type piphosData struct {
+	Hostname string `json:"hostname"`
+	PublicIP string `json:"public_ip"`
+}
+
 const (
 	TenderGithub = "github"
 	TenderGitlab = "gitlab"
