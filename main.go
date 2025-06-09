@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
@@ -16,40 +15,17 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
-		fmt.Println("usage: piphos <command> [<args>]")
+		showUsage()
 		os.Exit(1)
 	}
 
-	checkCmd := flag.NewFlagSet("check", flag.ExitOnError)
-	var beacon string
-	checkCmd.StringVar(&beacon, "b", "", "specify a beacon (optional)")
-
-	pushCmd := flag.NewFlagSet("push", flag.ExitOnError)
-	var tender string
-	pushCmd.StringVar(&tender, "t", "", "specify a tender")
-
 	switch os.Args[1] {
 	case "check":
-		checkCmd.Parse(os.Args[2:])
-		_, err := contactBeacon(cfg, beacon)
-		if err != nil {
-			fmt.Printf("unable to get public IP from beacon %s: %v\n", beacon, err)
-			os.Exit(1)
-		}
+		handleCheckCommand(cfg, os.Args[2:])
 	case "push":
-		pushCmd.Parse(os.Args[2:])
-		publicIP, err := contactBeacon(cfg, BeaconDefault)
-		if err != nil {
-			fmt.Printf("unable to get public IP: %v\n", err)
-			os.Exit(1)
-		}
-		_, err = pushTender(cfg, tender, publicIP)
-		if err != nil {
-			fmt.Printf("unable to push public IP to tender %s: %v\n", tender, err)
-			os.Exit(1)
-		}
+		handlePushCommand(cfg, os.Args[2:])
 	default:
-		fmt.Println("usage: piphos <command> [<args>]")
+		showUsage()
 		os.Exit(1)
 	}
 }
