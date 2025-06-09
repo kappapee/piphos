@@ -19,8 +19,9 @@ type Beacon struct {
 }
 
 const (
-	BeaconHaz = "haz"
-	BeaconAws = "aws"
+	BeaconDefault = ""
+	BeaconHaz     = "haz"
+	BeaconAws     = "aws"
 )
 
 var BeaconConfig = map[string]Beacon{
@@ -28,20 +29,9 @@ var BeaconConfig = map[string]Beacon{
 	BeaconAws: {Name: "aws", URL: "https://checkip.amazonaws.com"},
 }
 
-func contactBeacon(cfg config.Config, args []string) (string, error) {
-	if len(args) > 1 {
-		return "", fmt.Errorf("usage example: command [<beaconName>]")
-	}
+func contactBeacon(cfg config.Config, beacon string) (string, error) {
 	if len(BeaconConfig) == 0 {
 		return "", errors.New("no configured beacons found")
-	}
-
-	var beacon string
-
-	if len(args) == 0 {
-		beacon = cfg.Beacon
-	} else {
-		beacon = args[0]
 	}
 
 	var selectedBeacon Beacon
@@ -58,6 +48,11 @@ func contactBeacon(cfg config.Config, args []string) (string, error) {
 		}
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		selectedBeacon = BeaconConfig[keys[r.Intn(len(keys))]]
+		if beacon == "" {
+			fmt.Printf("selecting random beacon: %s\n", selectedBeacon.URL)
+		} else {
+			fmt.Printf("unknown beacon provided, selecting random beacon: %s\n", selectedBeacon.URL)
+		}
 	}
 
 	req, err := http.NewRequest("GET", selectedBeacon.URL, nil)
@@ -74,18 +69,23 @@ func contactBeacon(cfg config.Config, args []string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		content, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("unable to read response body from beacon %s: %v", selectedBeacon.Name, err)
-			return "", err
-		}
-		publicIP := strings.TrimSpace(string(content))
-		// TODO: validate IP address here (formatting)
-		fmt.Printf("%s\n", publicIP)
-		return publicIP, nil
-	} else {
-		log.Printf("expected response status '200 OK' from beacon %s, got: %d", selectedBeacon.Name, resp.StatusCode)
-		return "", errors.New("beacon did not respond with status 200 OK")
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("beacon %s returned status %d: %s", selectedBeacon.Name, resp.StatusCode, string(body))
 	}
+
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("unable to read response body from beacon %s: %v", selectedBeacon.Name, err)
+		return "", err
+	}
+
+	publicIP := strings.TrimSpace(string(content))
+	err = validateIP(publicIP)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Printf("%s\n", publicIP)
+	return publicIP, nil
 }

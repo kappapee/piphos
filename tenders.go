@@ -58,25 +58,14 @@ var TenderConfig = map[string]Tender{
 	},
 }
 
-func pushTender(cfg config.Config, args []string) (string, error) {
-	if len(args) < 1 || len(args) > 2 {
-		return "", fmt.Errorf("usage example: command <ip> [<tenderName>]")
-	}
+func pushTender(cfg config.Config, tender, ip string) (string, error) {
 	if len(TenderConfig) == 0 {
 		return "", errors.New("no configured tenders found")
 	}
 
-	ip := args[0]
-
-	var tender string
-
-	if len(args) == 1 {
-		tender = cfg.Tender
-		if tender == "" {
-			return "", errors.New("tender is not set in configuration file and not provided as argument")
-		}
-	} else {
-		tender = args[1]
+	err := validateToken(cfg.Token, tender)
+	if err != nil {
+		return "", err
 	}
 
 	var selectedTender Tender
@@ -120,7 +109,7 @@ func pushTender(cfg config.Config, args []string) (string, error) {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		log.Printf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
-		return "", fmt.Errorf("tender returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
 	}
 	return ip, nil
 }
