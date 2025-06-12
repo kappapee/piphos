@@ -3,10 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
@@ -49,7 +47,7 @@ var TenderConfig = map[string]Tender{
 
 func setupTender(cfg Config, tender string) (Tender, error) {
 	if len(TenderConfig) == 0 {
-		return Tender{}, errors.New("no configured tenders found")
+		return Tender{}, fmt.Errorf("no configured tenders found")
 	}
 
 	err := validateToken(cfg.UserConfig.Token, tender)
@@ -66,14 +64,13 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 		selectedTender.Payload.Description = PayloadDescription
 		selectedTender.Payload.Public = false
 	default:
-		return Tender{}, errors.New("unknown tender requested")
+		return Tender{}, fmt.Errorf("unknown tender requested")
 	}
 
 	if cfg.UserConfig.PiphosGistID == "" {
 		req, err := http.NewRequest("GET", selectedTender.URL, nil)
 		if err != nil {
-			log.Printf("unable to create request for tender %s: %v", selectedTender.Name, err)
-			return Tender{}, err
+			return Tender{}, fmt.Errorf("unable to create request for tender %s: %v", selectedTender.Name, err)
 		}
 
 		for k, v := range selectedTender.Headers {
@@ -82,21 +79,19 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 
 		resp, err := cfg.Client.Do(req)
 		if err != nil {
-			log.Printf("unable to get response from tender %s: %v", selectedTender.Name, err)
-			return Tender{}, err
+			return Tender{}, fmt.Errorf("unable to get response from tender %s: %v", selectedTender.Name, err)
 		}
 		defer resp.Body.Close()
 
 		respContent, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("unable to read response data from tender %s: %v", selectedTender.Name, err)
+			return Tender{}, fmt.Errorf("unable to read response data from tender %s: %v", selectedTender.Name, err)
 		}
 
 		var gists []GithubGist
 		err = json.Unmarshal(respContent, &gists)
 		if err != nil {
-			log.Printf("unable to unmarshal json data from tender %s: %v", selectedTender.Name, err)
-			return Tender{}, err
+			return Tender{}, fmt.Errorf("unable to unmarshal json data from tender %s: %v", selectedTender.Name, err)
 		}
 
 		gistID := ""
@@ -122,8 +117,7 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 
 	jsonBody, err := json.Marshal(tender.Payload)
 	if err != nil {
-		log.Printf("unable to create json payload for tender %s: %v", tender.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to create json payload for tender %s: %v", tender.Name, err)
 	}
 	bodyReader := bytes.NewReader(jsonBody)
 
@@ -139,8 +133,7 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 
 	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
-		log.Printf("unable to create request for tender %s: %v", tender.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to create request for tender %s: %v", tender.Name, err)
 	}
 
 	for k, v := range tender.Headers {
@@ -149,27 +142,24 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from tender %s: %v", tender.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to get response from tender %s: %v", tender.Name, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("tender %s returned status %d", tender.Name, resp.StatusCode)
 		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
 
 	if cfg.UserConfig.PiphosGistID == "" {
 		respContent, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("unable to read response data from tender %s: %v", tender.Name, err)
+			return "", fmt.Errorf("unable to read response data from tender %s: %v", tender.Name, err)
 		}
 
 		var gist GithubGist
 		err = json.Unmarshal(respContent, &gist)
 		if err != nil {
-			log.Printf("unable to unmarshal json data from tender %s: %v", tender.Name, err)
-			return "", err
+			return "", fmt.Errorf("unable to unmarshal json data from tender %s: %v", tender.Name, err)
 		}
 
 		cfg.UserConfig.PiphosGistID = gist.ID
@@ -186,8 +176,7 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 	url := tender.URL + "/" + cfg.UserConfig.PiphosGistID
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Printf("unable to create request for tender %s: %v", tender.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to create request for tender %s: %v", tender.Name, err)
 	}
 
 	for k, v := range tender.Headers {
@@ -196,29 +185,26 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from tender %s: %v", tender.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to get response from tender %s: %v", tender.Name, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("tender %s returned status %d", tender.Name, resp.StatusCode)
 		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
 
 	respContent, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("unable to read response data from tender %s: %v", tender.Name, err)
+		return "", fmt.Errorf("unable to read response data from tender %s: %v", tender.Name, err)
 	}
 
 	var gist GithubGist
 	err = json.Unmarshal(respContent, &gist)
 	if err != nil {
-		log.Printf("unable to unmarshal json data from tender %s: %v", tender.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to unmarshal json data from tender %s: %v", tender.Name, err)
 	}
 	for _, f := range gist.Files {
-		fmt.Printf("host: %s, IP: %s\n", f.Filename, f.Content)
+		fmt.Printf("%s:%s", f.Filename, f.Content)
 	}
 	return "", nil
 }

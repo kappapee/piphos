@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,36 +28,31 @@ type Config struct {
 func configLoad() (Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		log.Printf("unable to get configuration directory: %v\n", err)
-		return Config{}, err
+		return Config{}, fmt.Errorf("unable to get configuration directory: %v\n", err)
 	}
 
 	configPath := filepath.Join(configDir, configFileName)
 	configFile, err := os.Open(configPath)
 	if err != nil {
-		log.Printf("unable to open configuration file: %v\n", err)
-		return Config{}, err
+		return Config{}, fmt.Errorf("unable to open configuration file: %v\n", err)
 	}
 	defer configFile.Close()
 
 	config, err := io.ReadAll(configFile)
 	if err != nil {
-		log.Printf("unable to read from configuration file: %v\n", err)
-		return Config{}, err
+		return Config{}, fmt.Errorf("unable to read from configuration file: %v\n", err)
 	}
 
 	var cfg Config
 	err = json.Unmarshal(config, &cfg.UserConfig)
 	if err != nil {
-		log.Printf("unable to get configuration options: %v\n", err)
-		return Config{}, err
+		return Config{}, fmt.Errorf("unable to get configuration options: %v\n", err)
 	}
 
 	if cfg.UserConfig.Hostname == "" {
 		cfg.UserConfig.Hostname, err = os.Hostname()
 		if err != nil {
-			log.Printf("unable to get hostname: %v\n", err)
-			return Config{}, err
+			return Config{}, fmt.Errorf("unable to get hostname: %v\n", err)
 		}
 	}
 
@@ -69,28 +64,24 @@ func configLoad() (Config, error) {
 func configSave(cfg Config) error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		log.Printf("unable to get configuration directory: %v\n", err)
-		return err
+		return fmt.Errorf("unable to get configuration directory: %v\n", err)
 	}
 
 	configPath := filepath.Join(configDir, configFileName)
 	configFile, err := os.Create(configPath)
 	if err != nil {
-		log.Printf("unable to open configuration file: %v\n", err)
-		return err
+		return fmt.Errorf("unable to open configuration file: %v\n", err)
 	}
 	defer configFile.Close()
 
 	configContent, err := json.Marshal(cfg.UserConfig)
 	if err != nil {
-		log.Printf("unable to prepare configuration content: %v\n", err)
-		return err
+		return fmt.Errorf("unable to prepare configuration content: %v\n", err)
 	}
 
 	_, err = configFile.Write(configContent)
 	if err != nil {
-		log.Printf("unable to write to configuration file: %v\n", err)
-		return err
+		return fmt.Errorf("unable to write to configuration file: %v\n", err)
 	}
 	return nil
 }

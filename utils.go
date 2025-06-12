@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -16,14 +15,14 @@ func validateIP(ip string) error {
 
 func validateToken(token, tender string) error {
 	if token == "" {
-		return errors.New("empty token")
+		return fmt.Errorf("empty token")
 	}
 	switch tender {
 	case TenderGithub:
 		if !strings.HasPrefix(token, "ghp_") &&
 			!strings.HasPrefix(token, "gho_") &&
 			!strings.HasPrefix(token, "github_pat_") {
-			return errors.New("invalid GitHub token format")
+			return fmt.Errorf("invalid GitHub token format")
 		}
 	}
 	return nil

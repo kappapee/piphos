@@ -1,10 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -29,7 +27,7 @@ var BeaconConfig = map[string]Beacon{
 
 func contactBeacon(cfg Config, beacon string) (string, error) {
 	if len(BeaconConfig) == 0 {
-		return "", errors.New("no configured beacons found")
+		return "", fmt.Errorf("no configured beacons found")
 	}
 
 	var selectedBeacon Beacon
@@ -46,24 +44,17 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 		}
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		selectedBeacon = BeaconConfig[keys[r.Intn(len(keys))]]
-		if beacon == "" {
-			fmt.Printf("selecting random beacon: %s\n", selectedBeacon.URL)
-		} else {
-			fmt.Printf("unknown beacon provided, selecting random beacon: %s\n", selectedBeacon.URL)
-		}
 	}
 
 	req, err := http.NewRequest("GET", selectedBeacon.URL, nil)
 	if err != nil {
-		log.Printf("unable to create request for beacon %s: %v", selectedBeacon.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to create request for beacon %s: %v", selectedBeacon.Name, err)
 	}
 	req.Header.Set("User-Agent", "piphos/0.1")
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from beacon %s: %v", selectedBeacon.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to get response from beacon %s: %v", selectedBeacon.Name, err)
 	}
 	defer resp.Body.Close()
 
@@ -74,8 +65,7 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("unable to read response body from beacon %s: %v", selectedBeacon.Name, err)
-		return "", err
+		return "", fmt.Errorf("unable to read response body from beacon %s: %v", selectedBeacon.Name, err)
 	}
 
 	publicIP := strings.TrimSpace(string(content))
@@ -84,6 +74,5 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("%s\n", publicIP)
 	return publicIP, nil
 }
