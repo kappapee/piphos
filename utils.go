@@ -25,11 +25,6 @@ func validateToken(token, tender string) error {
 			!strings.HasPrefix(token, "github_pat_") {
 			return errors.New("invalid GitHub token format")
 		}
-	case TenderGitlab:
-		if !strings.HasPrefix(token, "glpat_") &&
-			!strings.HasPrefix(token, "glpat-") {
-			return errors.New("invalid GitLab token format")
-		}
 	}
 	return nil
 }

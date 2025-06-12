@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/kappapee/piphos/internal/config"
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := configLoad()
 	if err != nil {
 		fmt.Printf("unable to load configuration file: %v\n", err)
 		os.Exit(1)
@@ -24,6 +22,8 @@ func main() {
 		handleCheckCommand(cfg, os.Args[2:])
 	case "push":
 		handlePushCommand(cfg, os.Args[2:])
+	case "pull":
+		handlePullCommand(cfg, os.Args[2:])
 	default:
 		showUsage()
 		os.Exit(1)

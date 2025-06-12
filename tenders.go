@@ -5,83 +5,33 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"time"
-
-	"github.com/kappapee/piphos/internal/config"
 )
 
 type Tender struct {
 	Name    string            `json:"name"`
 	URL     string            `json:"url"`
 	Headers map[string]string `json:"headers"`
-	Data    TenderPayload     `json:"data"`
+	Payload GithubGist        `json:"data"`
 }
 
-type TenderPayload struct {
-	Description string `json:"description"`
-	Title       string `json:"title"`
-	Public      bool   `json:"public"`
-	Visibility  string `json:"visibility"`
-	Files       any    `json:"files"`
+type GithubFile struct {
+	Filename string `json:"filename"`
+	Content  string `json:"content"`
 }
 
-type piphosData struct {
-	Hostname string `json:"hostname"`
-	PublicIP string `json:"public_ip"`
-}
-
-type GithubGistsResponse []struct {
-	URL        string `json:"url"`
-	ForksURL   string `json:"forks_url"`
-	CommitsURL string `json:"commits_url"`
-	ID         string `json:"id"`
-	NodeID     string `json:"node_id"`
-	GitPullURL string `json:"git_pull_url"`
-	GitPushURL string `json:"git_push_url"`
-	HTMLURL    string `json:"html_url"`
-	Files      map[string]struct {
-		Filename string `json:"filename"`
-		Type     string `json:"type"`
-		Language string `json:"language"`
-		RawURL   string `json:"raw_url"`
-		Size     int    `json:"size"`
-	} `json:"files"`
-	Public      bool      `json:"public"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Description string    `json:"description"`
-	Comments    int       `json:"comments"`
-	User        any       `json:"user"`
-	CommentsURL string    `json:"comments_url"`
-	Owner       struct {
-		Login             string `json:"login"`
-		ID                int    `json:"id"`
-		NodeID            string `json:"node_id"`
-		AvatarURL         string `json:"avatar_url"`
-		GravatarID        string `json:"gravatar_id"`
-		URL               string `json:"url"`
-		HTMLURL           string `json:"html_url"`
-		FollowersURL      string `json:"followers_url"`
-		FollowingURL      string `json:"following_url"`
-		GistsURL          string `json:"gists_url"`
-		StarredURL        string `json:"starred_url"`
-		SubscriptionsURL  string `json:"subscriptions_url"`
-		OrganizationsURL  string `json:"organizations_url"`
-		ReposURL          string `json:"repos_url"`
-		EventsURL         string `json:"events_url"`
-		ReceivedEventsURL string `json:"received_events_url"`
-		Type              string `json:"type"`
-		SiteAdmin         bool   `json:"site_admin"`
-	} `json:"owner"`
-	Truncated bool `json:"truncated"`
+type GithubGist struct {
+	ID          string                `json:"id"`
+	Description string                `json:"description"`
+	Public      bool                  `json:"public"`
+	Files       map[string]GithubFile `json:"files"`
 }
 
 const (
-	TenderGithub = "github"
-	TenderGitlab = "gitlab"
-	TenderTitle  = "piphos"
+	TenderGithub       = "github"
+	PayloadDescription = "piphos"
 )
 
 var TenderConfig = map[string]Tender{
@@ -91,33 +41,20 @@ var TenderConfig = map[string]Tender{
 		Headers: map[string]string{
 			"X-GitHub-Api-Version": "2022-11-28",
 			"Content-Type":         "application/json",
+			"Authorization":        "Bearer ",
 		},
-		Data: TenderPayload{
-			Description: TenderTitle,
-			Public:      false,
-		},
-	},
-	TenderGitlab: {
-		Name: TenderGitlab,
-		URL:  "https://gitlab.com/api/v4/snippets",
-		Headers: map[string]string{
-			"Content-Type": "application/json",
-		},
-		Data: TenderPayload{
-			Title:      TenderTitle,
-			Visibility: "private",
-		},
+		Payload: GithubGist{},
 	},
 }
 
-func pushTender(cfg config.Config, tender, ip string) (string, error) {
+func setupTender(cfg Config, tender string) (Tender, error) {
 	if len(TenderConfig) == 0 {
-		return "", errors.New("no configured tenders found")
+		return Tender{}, errors.New("no configured tenders found")
 	}
 
-	err := validateToken(cfg.Token, tender)
+	err := validateToken(cfg.UserConfig.Token, tender)
 	if err != nil {
-		return "", err
+		return Tender{}, err
 	}
 
 	var selectedTender Tender
@@ -125,96 +62,163 @@ func pushTender(cfg config.Config, tender, ip string) (string, error) {
 	switch tender {
 	case TenderGithub:
 		selectedTender = TenderConfig[TenderGithub]
-		selectedTender.Headers["Authorization"] = "Bearer " + cfg.Token
-		selectedTender.Data.Files = map[string]map[string]string{cfg.Hostname: {"content": ip}}
-	case TenderGitlab:
-		selectedTender = TenderConfig[TenderGitlab]
-		selectedTender.Headers["PRIVATE-TOKEN"] = cfg.Token
-		selectedTender.Data.Files = []map[string]string{{"file_path": cfg.Hostname, "content": ip}}
+		selectedTender.Headers["Authorization"] += cfg.UserConfig.Token
+		selectedTender.Payload.Description = PayloadDescription
+		selectedTender.Payload.Public = false
 	default:
-		return "", errors.New("unknown tender requested")
+		return Tender{}, errors.New("unknown tender requested")
 	}
 
-	jsonBody, err := json.Marshal(selectedTender.Data)
+	if cfg.UserConfig.PiphosGistID == "" {
+		req, err := http.NewRequest("GET", selectedTender.URL, nil)
+		if err != nil {
+			log.Printf("unable to create request for tender %s: %v", selectedTender.Name, err)
+			return Tender{}, err
+		}
+
+		for k, v := range selectedTender.Headers {
+			req.Header.Set(k, v)
+		}
+
+		resp, err := cfg.Client.Do(req)
+		if err != nil {
+			log.Printf("unable to get response from tender %s: %v", selectedTender.Name, err)
+			return Tender{}, err
+		}
+		defer resp.Body.Close()
+
+		respContent, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("unable to read response data from tender %s: %v", selectedTender.Name, err)
+		}
+
+		var gists []GithubGist
+		err = json.Unmarshal(respContent, &gists)
+		if err != nil {
+			log.Printf("unable to unmarshal json data from tender %s: %v", selectedTender.Name, err)
+			return Tender{}, err
+		}
+
+		gistID := ""
+		for _, gist := range gists {
+			if gist.Description == PayloadDescription {
+				gistID = gist.ID
+			}
+		}
+
+		cfg.UserConfig.PiphosGistID = gistID
+		configSave(cfg)
+	}
+	return selectedTender, nil
+}
+
+func pushTender(cfg Config, tender Tender, ip string) (string, error) {
+	tender.Payload.Files = map[string]GithubFile{
+		cfg.UserConfig.Hostname: {
+			Filename: cfg.UserConfig.Hostname,
+			Content:  ip,
+		},
+	}
+
+	jsonBody, err := json.Marshal(tender.Payload)
 	if err != nil {
-		log.Printf("unable to create json payload for tender %s: %v", selectedTender.Name, err)
+		log.Printf("unable to create json payload for tender %s: %v", tender.Name, err)
 		return "", err
 	}
 	bodyReader := bytes.NewReader(jsonBody)
 
-	req, err := http.NewRequest("POST", selectedTender.URL, bodyReader)
+	var url string
+	var method string
+	if cfg.UserConfig.PiphosGistID == "" {
+		url = tender.URL
+		method = "POST"
+	} else {
+		url = tender.URL + "/" + cfg.UserConfig.PiphosGistID
+		method = "PATCH"
+	}
+
+	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
-		log.Printf("unable to create request for tender %s: %v", selectedTender.Name, err)
+		log.Printf("unable to create request for tender %s: %v", tender.Name, err)
 		return "", err
 	}
 
-	for k, v := range selectedTender.Headers {
+	for k, v := range tender.Headers {
 		req.Header.Set(k, v)
 	}
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from tender %s: %v", selectedTender.Name, err)
+		log.Printf("unable to get response from tender %s: %v", tender.Name, err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
-		return "", fmt.Errorf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
+		log.Printf("tender %s returned status %d", tender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
+	}
+
+	if cfg.UserConfig.PiphosGistID == "" {
+		respContent, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("unable to read response data from tender %s: %v", tender.Name, err)
+		}
+
+		var gist GithubGist
+		err = json.Unmarshal(respContent, &gist)
+		if err != nil {
+			log.Printf("unable to unmarshal json data from tender %s: %v", tender.Name, err)
+			return "", err
+		}
+
+		cfg.UserConfig.PiphosGistID = gist.ID
+		configSave(cfg)
 	}
 	return ip, nil
 }
 
-func pullTender(cfg config.Config, tender string) error {
-	if len(TenderConfig) == 0 {
-		return errors.New("no configured tenders found")
+func pullTender(cfg Config, tender Tender) (string, error) {
+	if cfg.UserConfig.PiphosGistID == "" {
+		return "", fmt.Errorf("no piphos records on tender %s, try the push subcommand first", tender.Name)
 	}
 
-	err := validateToken(cfg.Token, tender)
+	url := tender.URL + "/" + cfg.UserConfig.PiphosGistID
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		log.Printf("unable to create request for tender %s: %v", tender.Name, err)
+		return "", err
 	}
 
-	var selectedTender Tender
-
-	switch tender {
-	case TenderGithub:
-		selectedTender = TenderConfig[TenderGithub]
-		selectedTender.Headers["Authorization"] = "Bearer " + cfg.Token
-	case TenderGitlab:
-		selectedTender = TenderConfig[TenderGitlab]
-		selectedTender.Headers["PRIVATE-TOKEN"] = cfg.Token
-	default:
-		return errors.New("unknown tender requested")
-	}
-
-	jsonBody, err := json.Marshal(selectedTender.Data)
-	if err != nil {
-		log.Printf("unable to create json payload for tender %s: %v", selectedTender.Name, err)
-		return err
-	}
-	bodyReader := bytes.NewReader(jsonBody)
-
-	req, err := http.NewRequest("GET", selectedTender.URL, nil)
-	if err != nil {
-		log.Printf("unable to create request for tender %s: %v", selectedTender.Name, err)
-		return err
-	}
-
-	for k, v := range selectedTender.Headers {
+	for k, v := range tender.Headers {
 		req.Header.Set(k, v)
 	}
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		log.Printf("unable to get response from tender %s: %v", selectedTender.Name, err)
-		return err
+		log.Printf("unable to get response from tender %s: %v", tender.Name, err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
-		return fmt.Errorf("tender %s returned status %d", selectedTender.Name, resp.StatusCode)
+		log.Printf("tender %s returned status %d", tender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
+
+	respContent, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("unable to read response data from tender %s: %v", tender.Name, err)
+	}
+
+	var gist GithubGist
+	err = json.Unmarshal(respContent, &gist)
+	if err != nil {
+		log.Printf("unable to unmarshal json data from tender %s: %v", tender.Name, err)
+		return "", err
+	}
+	for _, f := range gist.Files {
+		fmt.Printf("host: %s, IP: %s\n", f.Filename, f.Content)
+	}
+	return "", nil
 }

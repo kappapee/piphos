@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/kappapee/piphos/internal/config"
 )
 
 type Beacon struct {
@@ -29,7 +27,7 @@ var BeaconConfig = map[string]Beacon{
 	BeaconAws: {Name: "aws", URL: "https://checkip.amazonaws.com"},
 }
 
-func contactBeacon(cfg config.Config, beacon string) (string, error) {
+func contactBeacon(cfg Config, beacon string) (string, error) {
 	if len(BeaconConfig) == 0 {
 		return "", errors.New("no configured beacons found")
 	}
