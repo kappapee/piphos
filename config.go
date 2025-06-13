@@ -56,31 +56,31 @@ type Config struct {
 func configLoad() (Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return Config{}, fmt.Errorf("unable to get configuration directory: %w\n", err)
+		return Config{}, fmt.Errorf("unable to get configuration directory: %w", err)
 	}
 
 	configPath := filepath.Join(configDir, configFileName)
 	configFile, err := os.Open(configPath)
 	if err != nil {
-		return Config{}, fmt.Errorf("unable to open configuration file: %w\n", err)
+		return Config{}, fmt.Errorf("unable to open configuration file: %w", err)
 	}
 	defer configFile.Close()
 
 	config, err := io.ReadAll(configFile)
 	if err != nil {
-		return Config{}, fmt.Errorf("unable to read from configuration file: %w\n", err)
+		return Config{}, fmt.Errorf("unable to read from configuration file: %w", err)
 	}
 
 	var cfg Config
 	err = json.Unmarshal(config, &cfg.UserConfig)
 	if err != nil {
-		return Config{}, fmt.Errorf("unable to get configuration options: %w\n", err)
+		return Config{}, fmt.Errorf("unable to get configuration options: %w", err)
 	}
 
 	if cfg.UserConfig.Hostname == "" {
 		cfg.UserConfig.Hostname, err = os.Hostname()
 		if err != nil {
-			return Config{}, fmt.Errorf("unable to get hostname: %w\n", err)
+			return Config{}, fmt.Errorf("unable to get hostname: %w", err)
 		}
 	}
 
@@ -96,7 +96,7 @@ func configLoad() (Config, error) {
 func configSave(cfg Config) error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return fmt.Errorf("unable to get configuration directory: %w\n", err)
+		return fmt.Errorf("unable to get configuration directory: %w", err)
 	}
 
 	configPath := filepath.Join(configDir, configFileName)

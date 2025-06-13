@@ -74,13 +74,13 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 
 	req, err := http.NewRequest("GET", selectedBeacon.URL, nil)
 	if err != nil {
-		return "", fmt.Errorf("unable to create request for beacon %s: %w\n", selectedBeacon.Name, err)
+		return "", fmt.Errorf("unable to create request for beacon %s: %w", selectedBeacon.Name, err)
 	}
 	req.Header.Set("User-Agent", "piphos/0.1")
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("unable to get response from beacon %s: %w\n", selectedBeacon.Name, err)
+		return "", fmt.Errorf("unable to get response from beacon %s: %w", selectedBeacon.Name, err)
 	}
 	defer resp.Body.Close()
 
@@ -91,7 +91,7 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("unable to read response body from beacon %s: %w\n", selectedBeacon.Name, err)
+		return "", fmt.Errorf("unable to read response body from beacon %s: %w", selectedBeacon.Name, err)
 	}
 
 	publicIP := strings.TrimSpace(string(content))
