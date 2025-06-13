@@ -95,9 +95,11 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 		}
 
 		gistID := ""
-		for _, gist := range gists {
-			if gist.Description == PayloadDescription {
-				gistID = gist.ID
+		if len(gists) > 0 {
+			for _, gist := range gists {
+				if gist.Description == PayloadDescription {
+					gistID = gist.ID
+				}
 			}
 		}
 
@@ -203,8 +205,10 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to unmarshal json data from tender %s: %v\n", tender.Name, err)
 	}
-	for _, f := range gist.Files {
-		fmt.Printf("%s:%s\n", f.Filename, f.Content)
+	if len(gist.Files) > 0 {
+		for _, f := range gist.Files {
+			fmt.Printf("%s:%s\n", f.Filename, f.Content)
+		}
 	}
 	return "", nil
 }

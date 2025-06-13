@@ -28,6 +28,13 @@ func validateToken(token, tender string) error {
 	return nil
 }
 
+func validateCmd(countNonFlagArgs int) error {
+	if countNonFlagArgs > 0 {
+		return fmt.Errorf("error: found %d unexpected arguments\n", countNonFlagArgs)
+	}
+	return nil
+}
+
 func showUsage() {
 	fmt.Println("usage: piphos <command> [options]")
 	fmt.Println("")

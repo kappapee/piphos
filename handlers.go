@@ -12,8 +12,9 @@ func handleCheckCommand(cfg Config, args []string) {
 
 	checkCmd.Parse(args)
 
-	if checkCmd.NArg() > 0 {
-		fmt.Printf("error: unexpected arguments: %v\n", checkCmd.Args())
+	err := validateCmd(checkCmd.NArg())
+	if err != nil {
+		fmt.Printf("error: unexpected arguments: %v: %v\n", checkCmd.Args(), err)
 		os.Exit(1)
 	}
 
@@ -22,7 +23,7 @@ func handleCheckCommand(cfg Config, args []string) {
 		beaconName = cfg.UserConfig.Beacon
 	}
 
-	_, err := contactBeacon(cfg, beaconName)
+	_, err = contactBeacon(cfg, beaconName)
 	if err != nil {
 		fmt.Printf("error: unable to get public IP from beacon %s: %v\n", beaconName, err)
 		os.Exit(1)
@@ -36,8 +37,9 @@ func handlePushCommand(cfg Config, args []string) {
 
 	pushCmd.Parse(args)
 
-	if pushCmd.NArg() > 0 {
-		fmt.Printf("error: unexpected arguments: %v\n", pushCmd.Args())
+	err := validateCmd(pushCmd.NArg())
+	if err != nil {
+		fmt.Printf("error: unexpected arguments: %v: %v\n", pushCmd.Args(), err)
 		os.Exit(1)
 	}
 
@@ -80,8 +82,9 @@ func handlePullCommand(cfg Config, args []string) {
 
 	pullCmd.Parse(args)
 
-	if pullCmd.NArg() > 0 {
-		fmt.Printf("error: unexpected arguments: %v\n", pullCmd.Args())
+	err := validateCmd(pullCmd.NArg())
+	if err != nil {
+		fmt.Printf("error: unexpected arguments: %v: %v\n", pullCmd.Args(), err)
 		os.Exit(1)
 	}
 
