@@ -27,7 +27,7 @@ var BeaconConfig = map[string]Beacon{
 
 func contactBeacon(cfg Config, beacon string) (string, error) {
 	if len(BeaconConfig) == 0 {
-		return "", fmt.Errorf("no configured beacons found")
+		return "", fmt.Errorf("no configured beacons found\n")
 	}
 
 	var selectedBeacon Beacon
@@ -48,24 +48,24 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 
 	req, err := http.NewRequest("GET", selectedBeacon.URL, nil)
 	if err != nil {
-		return "", fmt.Errorf("unable to create request for beacon %s: %v", selectedBeacon.Name, err)
+		return "", fmt.Errorf("unable to create request for beacon %s: %v\n", selectedBeacon.Name, err)
 	}
 	req.Header.Set("User-Agent", "piphos/0.1")
 
 	resp, err := cfg.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("unable to get response from beacon %s: %v", selectedBeacon.Name, err)
+		return "", fmt.Errorf("unable to get response from beacon %s: %v\n", selectedBeacon.Name, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("beacon %s returned status %d: %s", selectedBeacon.Name, resp.StatusCode, string(body))
+		return "", fmt.Errorf("beacon %s returned status %d: %s\n", selectedBeacon.Name, resp.StatusCode, string(body))
 	}
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("unable to read response body from beacon %s: %v", selectedBeacon.Name, err)
+		return "", fmt.Errorf("unable to read response body from beacon %s: %v\n", selectedBeacon.Name, err)
 	}
 
 	publicIP := strings.TrimSpace(string(content))
@@ -74,5 +74,6 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 		return "", err
 	}
 
+	fmt.Printf("%s\n", publicIP)
 	return publicIP, nil
 }

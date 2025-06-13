@@ -13,6 +13,7 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
+		fmt.Printf("error: not enough arguments\n")
 		showUsage()
 		os.Exit(1)
 	}
@@ -25,6 +26,7 @@ func main() {
 	case "pull":
 		handlePullCommand(cfg, os.Args[2:])
 	default:
+		fmt.Printf("error: sub-command not found\n")
 		showUsage()
 		os.Exit(1)
 	}

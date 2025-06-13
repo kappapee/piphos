@@ -8,21 +8,21 @@ import (
 
 func validateIP(ip string) error {
 	if net.ParseIP(ip) == nil {
-		return fmt.Errorf("invalid IP address format: %s", ip)
+		return fmt.Errorf("invalid IP address format: %s\n", ip)
 	}
 	return nil
 }
 
 func validateToken(token, tender string) error {
 	if token == "" {
-		return fmt.Errorf("empty token")
+		return fmt.Errorf("empty token\n")
 	}
 	switch tender {
 	case TenderGithub:
 		if !strings.HasPrefix(token, "ghp_") &&
 			!strings.HasPrefix(token, "gho_") &&
 			!strings.HasPrefix(token, "github_pat_") {
-			return fmt.Errorf("invalid GitHub token format")
+			return fmt.Errorf("invalid GitHub token format\n")
 		}
 	}
 	return nil
