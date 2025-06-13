@@ -178,7 +178,7 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 // for future operations.
 func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 	tender.Payload.Files = map[string]GithubFile{
-		cfg.UserConfig.Hostname: {
+		tender.Payload.Description: {
 			Filename: cfg.UserConfig.Hostname,
 			Content:  ip,
 		},
