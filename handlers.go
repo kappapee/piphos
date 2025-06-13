@@ -14,7 +14,7 @@ func handleCheckCommand(cfg Config, args []string) {
 
 	err := validateCmd(checkCmd.NArg())
 	if err != nil {
-		fmt.Printf("error: unexpected arguments: %v: %w\n", checkCmd.Args(), err)
+		fmt.Printf("error: unexpected arguments: %v: %v\n", checkCmd.Args(), err)
 		os.Exit(1)
 	}
 
@@ -25,7 +25,7 @@ func handleCheckCommand(cfg Config, args []string) {
 
 	_, err = contactBeacon(cfg, beaconName)
 	if err != nil {
-		fmt.Printf("error: unable to get public IP from beacon %s: %w\n", beaconName, err)
+		fmt.Printf("error: unable to get public IP from beacon %s: %v\n", beaconName, err)
 		os.Exit(1)
 	}
 }
@@ -39,7 +39,7 @@ func handlePushCommand(cfg Config, args []string) {
 
 	err := validateCmd(pushCmd.NArg())
 	if err != nil {
-		fmt.Printf("error: unexpected arguments: %v: %w\n", pushCmd.Args(), err)
+		fmt.Printf("error: unexpected arguments: %v: %v\n", pushCmd.Args(), err)
 		os.Exit(1)
 	}
 
@@ -59,19 +59,19 @@ func handlePushCommand(cfg Config, args []string) {
 
 	publicIP, err := contactBeacon(cfg, beaconName)
 	if err != nil {
-		fmt.Printf("error: unable to get public IP from beacon %s: %w\n", beaconName, err)
+		fmt.Printf("error: unable to get public IP from beacon %s: %v\n", beaconName, err)
 		os.Exit(1)
 	}
 
 	selectedTender, err := setupTender(cfg, tenderName)
 	if err != nil {
-		fmt.Printf("error: unable to setup tender %s: %w\n", tenderName, err)
+		fmt.Printf("error: unable to setup tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 
 	_, err = pushTender(cfg, selectedTender, publicIP)
 	if err != nil {
-		fmt.Printf("error: unable to push public IP to tender %s: %w\n", tenderName, err)
+		fmt.Printf("error: unable to push public IP to tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 }
@@ -84,7 +84,7 @@ func handlePullCommand(cfg Config, args []string) {
 
 	err := validateCmd(pullCmd.NArg())
 	if err != nil {
-		fmt.Printf("error: unexpected arguments: %v: %w\n", pullCmd.Args(), err)
+		fmt.Printf("error: unexpected arguments: %v: %v\n", pullCmd.Args(), err)
 		os.Exit(1)
 	}
 
@@ -99,13 +99,13 @@ func handlePullCommand(cfg Config, args []string) {
 
 	selectedTender, err := setupTender(cfg, tenderName)
 	if err != nil {
-		fmt.Printf("error: unable to setup tender %s: %w\n", tenderName, err)
+		fmt.Printf("error: unable to setup tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 
 	_, err = pullTender(cfg, selectedTender)
 	if err != nil {
-		fmt.Printf("error: unable to pull from tender %s: %w\n", tenderName, err)
+		fmt.Printf("error: unable to pull from tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 }
