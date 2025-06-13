@@ -22,6 +22,14 @@ This allows you to easily track and access your homelab from anywhere, even when
 
 ## Installation
 
+### Using go install (Recommended)
+
+```bash
+go install github.com/kappapee/piphos@latest
+```
+
+This will install the latest version of piphos to your `$GOPATH/bin` directory. Make sure `$GOPATH/bin` is in your `$PATH`.
+
 ### From Source
 
 ```bash
@@ -42,6 +50,13 @@ Download the latest binary from the [releases page](https://github.com/kappapee/
    - Copy the token (starts with `ghp_`, `gho_`, or `github_pat_`)
 
 2. **Create Configuration File**
+   
+   The configuration file location depends on your operating system:
+   - **Linux**: `~/.config/piphos/config.json`
+   - **macOS**: `~/Library/Application Support/piphos/config.json`
+   - **Windows**: `%APPDATA%\piphos\config.json`
+
+   **Linux/Unix:**
    ```bash
    mkdir -p ~/.config/piphos
    cat > ~/.config/piphos/config.json << EOF
@@ -51,6 +66,30 @@ Download the latest binary from the [releases page](https://github.com/kappapee/
      "beacon": "haz"
    }
    EOF
+   ```
+
+   **macOS:**
+   ```bash
+   mkdir -p ~/Library/Application\ Support/piphos
+   cat > ~/Library/Application\ Support/piphos/config.json << EOF
+   {
+     "token": "your_github_token_here",
+     "tender": "github",
+     "beacon": "haz"
+   }
+   EOF
+   ```
+
+   **Windows (PowerShell):**
+   ```powershell
+   New-Item -ItemType Directory -Force -Path "$env:APPDATA\piphos"
+   @"
+   {
+     "token": "your_github_token_here",
+     "tender": "github",
+     "beacon": "haz"
+   }
+   "@ | Out-File -FilePath "$env:APPDATA\piphos\config.json" -Encoding UTF8
    ```
 
 3. **Check Your IP**
@@ -72,7 +111,8 @@ Download the latest binary from the [releases page](https://github.com/kappapee/
 
 piphos uses a JSON configuration file stored in your system's configuration directory:
 
-- **Linux/macOS**: `~/.config/piphos/config.json`
+- **Linux**: `~/.config/piphos/config.json`
+- **macOS**: `~/Library/Application Support/piphos/config.json`
 - **Windows**: `%APPDATA%\piphos\config.json`
 
 ### Configuration Options
