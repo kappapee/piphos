@@ -98,6 +98,12 @@ func handlePushCommand(cfg Config, args []string) {
 		os.Exit(1)
 	}
 
+	cfg, err = configLoad()
+	if err != nil {
+		log.Fatalf("unable to reload configuration file: %v", err)
+		os.Exit(1)
+	}
+
 	_, err = pushTender(cfg, selectedTender, publicIP)
 	if err != nil {
 		log.Fatalf("error: unable to push public IP to tender %s: %v\n", tenderName, err)
@@ -148,6 +154,11 @@ func handlePullCommand(cfg Config, args []string) {
 		os.Exit(1)
 	}
 
+	cfg, err = configLoad()
+	if err != nil {
+		log.Fatalf("unable to reload configuration file: %v", err)
+		os.Exit(1)
+	}
 	_, err = pullTender(cfg, selectedTender)
 	if err != nil {
 		log.Fatalf("error: unable to pull from tender %s: %v\n", tenderName, err)
