@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   ci:
-    name: Check code formatting and dry-run release
+    name: Check code formatting, check linting and dry-run release
     timeout-minutes: 10
 
     strategy:
@@ -36,6 +36,9 @@ jobs:
             echo "Please format Go code by running: go fmt ./..."
             exit 1
           fi
+      - name: Lint Go code
+        run: |
+          go vet ./...
       - name: Install GoReleaser
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.go-version == 'stable'
         uses: goreleaser/goreleaser-action@v6

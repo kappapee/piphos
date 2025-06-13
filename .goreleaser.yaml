@@ -27,7 +27,3 @@ archives:
       {{ .ProjectName }}_{{- tolower .Os }}_{{- if eq .Arch "amd64" }}x86_64{{- else }}{{ .Arch }}{{ end }}
 checksum:
   name_template: "checksums.txt"
-snapshot:
-  version_template: "{{ incpatch .Version }}-next"
-changelog:
-  use: github-native
