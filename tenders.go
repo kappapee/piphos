@@ -58,7 +58,7 @@ const (
 
 	// PayloadDescription is the standard description used for piphos gists.
 	// This helps identify gists created by piphos among other user gists.
-	PayloadDescription = "piphos"
+	PayloadDescription = "_piphos_"
 )
 
 // TenderConfig maps tender identifiers to their corresponding Tender configurations.
@@ -178,7 +178,11 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 // for future operations.
 func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 	tender.Payload.Files = map[string]GithubFile{
-		tender.Payload.Description: {
+		PayloadDescription: {
+			Filename: PayloadDescription,
+			Content:  PayloadDescription,
+		},
+		cfg.UserConfig.Hostname: {
 			Filename: cfg.UserConfig.Hostname,
 			Content:  ip,
 		},
@@ -254,7 +258,7 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 // "<hostname>:<address>" to stdout.
 func pullTender(cfg Config, tender Tender) (string, error) {
 	if cfg.UserConfig.PiphosGistID == "" {
-		return "", fmt.Errorf("no piphos records on tender %s, try the push subcommand first\n", tender.Name)
+		return "", fmt.Errorf("no piphos records on tender %s or piphos record ID not configured, try the push subcommand first\n", tender.Name)
 	}
 
 	url := tender.URL + "/" + cfg.UserConfig.PiphosGistID
@@ -289,7 +293,9 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 	}
 	if len(gist.Files) > 0 {
 		for _, f := range gist.Files {
-			fmt.Printf("%s:%s\n", f.Filename, f.Content)
+			if f.Filename != PayloadDescription {
+				fmt.Printf("%s:%s\n", f.Filename, f.Content)
+			}
 		}
 	}
 	return "", nil
