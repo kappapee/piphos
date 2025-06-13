@@ -10,21 +10,49 @@ import (
 	"time"
 )
 
+// configFileName defines the relative path for the configuration file
+// within the user's configuration directory.
 const configFileName = "piphos/config.json"
 
+// UserConfig represents the user-configurable settings for piphos.
+// These settings are persisted to and loaded from a JSON configuration file.
 type UserConfig struct {
-	Hostname     string `json:"hostname"`
-	Token        string `json:"token"`
-	Beacon       string `json:"beacon"`
-	Tender       string `json:"tender"`
+	// Hostname is the name used to identify this machine in tender services.
+	// If empty, the system hostname will be used automatically.
+	Hostname string `json:"hostname"`
+
+	// Token is the authentication token for accessing tender services.
+	// For GitHub, this should be a personal access token with gist permissions.
+	Token string `json:"token"`
+
+	// Beacon specifies the preferred beacon service for IP detection.
+	// If empty, a random beacon will be selected from available options.
+	Beacon string `json:"beacon"`
+
+	// Tender specifies the preferred tender service for IP storage.
+	// Currently supported: "github" for GitHub Gists.
+	Tender string `json:"tender"`
+
+	// PiphosGistID stores the GitHub Gist ID used for IP storage.
+	// This is automatically populated after the first successful push operation.
 	PiphosGistID string `json:"piphos_gist_id"`
 }
 
+// Config holds the complete configuration for a piphos session,
+// including both user settings and runtime components.
 type Config struct {
-	Client     *http.Client
+	// Client is the HTTP client used for all network operations.
+	// It includes appropriate timeouts and other performance settings.
+	Client *http.Client
+
+	// UserConfig contains the user-configurable settings.
 	UserConfig UserConfig
 }
 
+// configLoad loads the piphos configuration from the user's configuration directory.
+//
+// Returns a fully initialized Config struct or an error if the configuration
+// cannot be loaded or parsed.
 func configLoad() (Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -61,6 +89,10 @@ func configLoad() (Config, error) {
 	return cfg, nil
 }
 
+// configSave persists the current configuration to the user's configuration directory.
+//
+// Returns an error if the configuration cannot be saved due to filesystem issues
+// or JSON marshaling failures.
 func configSave(cfg Config) error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
