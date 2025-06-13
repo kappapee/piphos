@@ -8,7 +8,7 @@ import (
 func main() {
 	cfg, err := configLoad()
 	if err != nil {
-		fmt.Printf("error: unable to load configuration file: %v\n", err)
+		fmt.Printf("error: unable to load configuration file: %w\n", err)
 		os.Exit(1)
 	}
 
