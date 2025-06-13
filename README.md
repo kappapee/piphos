@@ -2,6 +2,36 @@
 
 **piphos** is a command-line tool for managing dynamic IP addresses in homelabs. It provides an easy way to detect your current public IP address and store it in cloud services for remote access.
 
+## 🎯 Why piphos?
+
+**Tired of playing IP address hide-and-seek with your homelab?**
+
+If you're a homelab enthusiast, you know the pain: you're at work and you want to quickly check something on one of your homelabs, but you can't remote in because your ISP changed your IP address.
+
+If you are the family IT person, you also know the pain: your sibling sends you a text for support with their laptop, and you have to text back and forth to get their IP address so that you can login and support them.
+
+You don't have to be paying for static IPs and VPSs or fight with dynamic DNS setup.
+
+You can let your computer tell you the information you want.
+
+### In a nutshell
+
+**At home:**
+```bash
+piphos push -t github  # or setup as a cron job to automate
+```
+
+**From anywhere:**
+```bash
+piphos pull -t github  # Shows: "home-server: 203.0.113.42"
+ssh admin@203.0.113.42  # You're in!
+```
+
+**Perfect for:**
+- 🏠 **Homelab Heroes**: Access your servers without expensive static IPs
+- 👨‍👩‍👧‍👦 **Family IT Support**: Remote into family computers from anywhere
+- 🎒 **Remote Workers**: Access your home office setup while traveling
+
 ## Overview
 
 piphos consists of two main components:
@@ -50,7 +80,7 @@ Download the latest binary from the [releases page](https://github.com/kappapee/
    - Copy the token (starts with `ghp_`, `gho_`, or `github_pat_`)
 
 2. **Create Configuration File**
-   
+
    The configuration file location depends on your operating system:
    - **Linux**: `~/.config/piphos/config.json`
    - **macOS**: `~/Library/Application Support/piphos/config.json`
