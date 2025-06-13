@@ -329,21 +329,28 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Common Issues
 
 **Q: "unable to load configuration file" error**
+
 A: Create the configuration directory and file manually:
+
 ```bash
 mkdir -p ~/.config/piphos
 echo '{"token":"your_token","tender":"github"}' > ~/.config/piphos/config.json
 ```
 
 **Q: "invalid GitHub token format" error**
+
 A: Ensure your GitHub token starts with `ghp_`, `gho_`, or `github_pat_` and has `gist` permissions.
 
 **Q: "no piphos records on tender" error**
+
 A: Run `piphos push -t github` first to create initial data.
 
 **Q: Network timeout errors**
+
 A: Check your internet connection and try a different beacon service.
 
 ---
 
 For more help, please [open an issue](https://github.com/kappapee/piphos/issues) on GitHub.
+
+This document was generated in part from conversations with Claude Sonnet 4.
