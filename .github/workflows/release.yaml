@@ -1,19 +1,25 @@
-name: goreleaser
+name: release
+
 on:
   push:
     tags:
       - "*"
+
 permissions:
   contents: write
+
 jobs:
-  goreleaser:
+  release:
+    name: Release project binary
+    timeout-minutes: 10
+
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: git fetch --force --tags
-      - uses: actions/setup-go@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v5
         with:
           go-version: stable
       - name: Run GoReleaser
