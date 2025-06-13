@@ -68,20 +68,35 @@ func configSave(cfg Config) error {
 	}
 
 	configPath := filepath.Join(configDir, configFileName)
-	configFile, err := os.Create(configPath)
+	tempFile, err := os.CreateTemp(configDir, "piphos-config-*.tmp")
 	if err != nil {
-		return fmt.Errorf("unable to open configuration file: %v\n", err)
+		return fmt.Errorf("unable to create temporary config file: %v", err)
 	}
-	defer configFile.Close()
+	tempPath := tempFile.Name()
 
-	configContent, err := json.Marshal(cfg.UserConfig)
+	defer func() {
+		tempFile.Close()
+		os.Remove(tempPath)
+	}()
+
+	configContent, err := json.MarshalIndent(cfg.UserConfig, "", "  ")
 	if err != nil {
-		return fmt.Errorf("unable to prepare configuration content: %v\n", err)
+		return fmt.Errorf("unable to marshal configuration: %v", err)
 	}
 
-	_, err = configFile.Write(configContent)
-	if err != nil {
-		return fmt.Errorf("unable to write to configuration file: %v\n", err)
+	if _, err := tempFile.Write(configContent); err != nil {
+		return fmt.Errorf("unable to write configuration: %v", err)
 	}
+
+	if err := tempFile.Sync(); err != nil {
+		return fmt.Errorf("unable to sync configuration: %v", err)
+	}
+
+	tempFile.Close()
+
+	if err := os.Rename(tempPath, configPath); err != nil {
+		return fmt.Errorf("unable to finalize configuration: %v", err)
+	}
+
 	return nil
 }
