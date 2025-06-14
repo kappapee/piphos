@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 )
 
@@ -33,17 +34,27 @@ func validateIP(ip string) error {
 //     with the specified tender service, nil if valid
 func validateToken(token, tender string) error {
 	if token == "" {
-		return fmt.Errorf("empty token\n")
+		return fmt.Errorf("empty token")
 	}
 	switch tender {
 	case TenderGithub:
-		if !strings.HasPrefix(token, "ghp_") &&
-			!strings.HasPrefix(token, "gho_") &&
-			!strings.HasPrefix(token, "github_pat_") {
-			return fmt.Errorf("invalid GitHub token format\n")
+		token = strings.TrimSpace(token)
+
+		var patterns = []string{
+			`^ghp_[A-Za-z0-9]{36}$`,          // Classic PAT
+			`^github_pat_[A-Za-z0-9_]{70,}$`, // Fine-grained PAT (min 70 chars after prefix)
 		}
+
+		for _, pat := range patterns {
+			re := regexp.MustCompile(pat)
+			if re.MatchString(token) {
+				return nil
+			}
+		}
+		return fmt.Errorf("invalid tender %s token format", tender)
+	default:
+		return fmt.Errorf("unknown tender name: %s", tender)
 	}
-	return nil
 }
 
 func validateCmd(countNonFlagArgs int) error {
