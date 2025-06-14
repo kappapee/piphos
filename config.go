@@ -49,12 +49,15 @@ type Config struct {
 	UserConfig UserConfig
 }
 
+// userConfigDirFunc allows overriding os.UserConfigDir for testing
+var userConfigDirFunc = os.UserConfigDir
+
 // configLoad loads the piphos configuration from the user's configuration directory.
 //
 // Returns a fully initialized Config struct or an error if the configuration
 // cannot be loaded or parsed.
 func configLoad() (Config, error) {
-	configDir, err := os.UserConfigDir()
+	configDir, err := userConfigDirFunc()
 	if err != nil {
 		return Config{}, fmt.Errorf("unable to get configuration directory: %w", err)
 	}
@@ -94,7 +97,7 @@ func configLoad() (Config, error) {
 // Returns an error if the configuration cannot be saved due to filesystem issues
 // or JSON marshaling failures.
 func configSave(cfg Config) error {
-	configDir, err := os.UserConfigDir()
+	configDir, err := userConfigDirFunc()
 	if err != nil {
 		return fmt.Errorf("unable to get configuration directory: %w", err)
 	}
