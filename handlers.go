@@ -100,7 +100,7 @@ func handlePushCommand(cfg Config, args []string) {
 
 	cfg, err = configLoad()
 	if err != nil {
-		log.Fatalf("unable to reload configuration file: %v", err)
+		log.Fatalf("error: unable to reload configuration file: %v", err)
 		os.Exit(1)
 	}
 
@@ -156,7 +156,7 @@ func handlePullCommand(cfg Config, args []string) {
 
 	cfg, err = configLoad()
 	if err != nil {
-		log.Fatalf("unable to reload configuration file: %v", err)
+		log.Fatalf("error: unable to reload configuration file: %v", err)
 		os.Exit(1)
 	}
 	_, err = pullTender(cfg, selectedTender)

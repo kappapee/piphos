@@ -98,7 +98,7 @@ var TenderConfig = map[string]Tender{
 // file to avoid repeated API calls in future operations.
 func setupTender(cfg Config, tender string) (Tender, error) {
 	if len(TenderConfig) == 0 {
-		return Tender{}, fmt.Errorf("no configured tenders found\n")
+		return Tender{}, fmt.Errorf("no configured tenders found")
 	}
 
 	err := validateToken(cfg.UserConfig.Token, tender)
@@ -115,7 +115,7 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 		selectedTender.Payload.Description = PayloadDescription
 		selectedTender.Payload.Public = false
 	default:
-		return Tender{}, fmt.Errorf("unknown tender requested\n")
+		return Tender{}, fmt.Errorf("unknown tender requested")
 	}
 
 	if cfg.UserConfig.PiphosGistID == "" {
@@ -220,7 +220,7 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("tender %s returned status %d\n", tender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
 
 	if cfg.UserConfig.PiphosGistID == "" {
@@ -258,7 +258,7 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 // "<hostname>:<address>" to stdout.
 func pullTender(cfg Config, tender Tender) (string, error) {
 	if cfg.UserConfig.PiphosGistID == "" {
-		return "", fmt.Errorf("no piphos records on tender %s or piphos record ID not configured, try the push subcommand first\n", tender.Name)
+		return "", fmt.Errorf("no piphos records on tender %s or piphos record ID not configured, try the push subcommand first", tender.Name)
 	}
 
 	url := tender.URL + "/" + cfg.UserConfig.PiphosGistID
@@ -278,7 +278,7 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("tender %s returned status %d\n", tender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
 
 	respContent, err := io.ReadAll(resp.Body)

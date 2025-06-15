@@ -52,7 +52,7 @@ var BeaconConfig = map[string]Beacon{
 //     or if no beacon services are configured
 func contactBeacon(cfg Config, beacon string) (string, error) {
 	if len(BeaconConfig) == 0 {
-		return "", fmt.Errorf("no configured beacons found\n")
+		return "", fmt.Errorf("no configured beacons found")
 	}
 
 	var selectedBeacon Beacon
@@ -86,7 +86,7 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("beacon %s returned status %d: %s\n", selectedBeacon.Name, resp.StatusCode, string(body))
+		return "", fmt.Errorf("beacon %s returned status %d: %s", selectedBeacon.Name, resp.StatusCode, string(body))
 	}
 
 	content, err := io.ReadAll(resp.Body)
