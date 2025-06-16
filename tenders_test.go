@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -76,7 +75,6 @@ func TestSetupTender(t *testing.T) {
 					t.Errorf("setupTender() tender name = %v, want %v", tender.Name, tt.tender)
 				}
 				if !strings.HasPrefix(tender.Headers["Authorization"], "Bearer "+tt.cfg.UserConfig.Token) {
-					fmt.Printf("%v", tender.Headers)
 					t.Error("Token not properly set in authorization header")
 				}
 				req := transport.LastRequest()
