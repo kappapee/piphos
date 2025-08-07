@@ -15,7 +15,7 @@ import (
 //   - error: An error if the IP address format is invalid, nil if valid
 func validateIP(ip string) error {
 	if net.ParseIP(ip) == nil {
-		return fmt.Errorf("invalid IP address format: %s\n", ip)
+		return fmt.Errorf("invalid IP address format: %s", ip)
 	}
 	return nil
 }
@@ -33,14 +33,14 @@ func validateIP(ip string) error {
 //     with the specified tender service, nil if valid
 func validateToken(token, tender string) error {
 	if token == "" {
-		return fmt.Errorf("empty token\n")
+		return fmt.Errorf("empty token")
 	}
 	switch tender {
 	case TenderGithub:
 		if !strings.HasPrefix(token, "ghp_") &&
 			!strings.HasPrefix(token, "gho_") &&
 			!strings.HasPrefix(token, "github_pat_") {
-			return fmt.Errorf("invalid GitHub token format\n")
+			return fmt.Errorf("invalid GitHub token format")
 		}
 	}
 	return nil
@@ -48,7 +48,7 @@ func validateToken(token, tender string) error {
 
 func validateCmd(countNonFlagArgs int) error {
 	if countNonFlagArgs > 0 {
-		return fmt.Errorf("error: found %d unexpected arguments\n", countNonFlagArgs)
+		return fmt.Errorf("found %d unexpected arguments", countNonFlagArgs)
 	}
 	return nil
 }

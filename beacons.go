@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -52,7 +52,7 @@ var BeaconConfig = map[string]Beacon{
 //     or if no beacon services are configured
 func contactBeacon(cfg Config, beacon string) (string, error) {
 	if len(BeaconConfig) == 0 {
-		return "", fmt.Errorf("no configured beacons found\n")
+		return "", fmt.Errorf("no configured beacons found")
 	}
 
 	var selectedBeacon Beacon
@@ -69,7 +69,9 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 		}
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		selectedBeacon = BeaconConfig[keys[r.Intn(len(keys))]]
-		log.Printf("info: no beacon or unknown beacon provided, selecting random beacon: %s\n", selectedBeacon.Name)
+		if _, err := fmt.Fprintf(os.Stderr, "INFO: no beacon or unknown beacon provided, selecting random beacon: %s\n", selectedBeacon.Name); err != nil {
+			return "", fmt.Errorf("unable to print to standard out: %w", err)
+		}
 	}
 
 	req, err := http.NewRequest("GET", selectedBeacon.URL, nil)
@@ -82,11 +84,15 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to get response from beacon %s: %w", selectedBeacon.Name, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: unable to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("beacon %s returned status %d: %s\n", selectedBeacon.Name, resp.StatusCode, string(body))
+		return "", fmt.Errorf("beacon %s returned status %d: %s", selectedBeacon.Name, resp.StatusCode, string(body))
 	}
 
 	content, err := io.ReadAll(resp.Body)
@@ -95,11 +101,13 @@ func contactBeacon(cfg Config, beacon string) (string, error) {
 	}
 
 	publicIP := strings.TrimSpace(string(content))
-	err = validateIP(publicIP)
-	if err != nil {
-		return "", err
+	if err = validateIP(publicIP); err != nil {
+		return "", fmt.Errorf("invalid IP address format: %w", err)
 	}
 
-	fmt.Printf("%s\n", publicIP)
+	if _, err := fmt.Fprintf(os.Stdout, "%s\n", publicIP); err != nil {
+		return "", fmt.Errorf("unable to print to standard out: %w", err)
+	}
+
 	return publicIP, nil
 }

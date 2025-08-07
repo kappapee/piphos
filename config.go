@@ -22,7 +22,6 @@ type UserConfig struct {
 	Hostname string `json:"hostname"`
 
 	// Token is the authentication token for accessing tender services.
-	// For GitHub, this should be a personal access token with gist permissions.
 	Token string `json:"token"`
 
 	// Beacon specifies the preferred beacon service for IP detection.
@@ -56,7 +55,7 @@ type Config struct {
 func configLoad() (Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return Config{}, fmt.Errorf("unable to get configuration directory: %w", err)
+		return Config{}, fmt.Errorf("unable to determine configuration directory: %w", err)
 	}
 
 	configPath := filepath.Join(configDir, configFileName)
@@ -64,11 +63,16 @@ func configLoad() (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("unable to open configuration file: %w", err)
 	}
-	defer configFile.Close()
+	defer func() {
+		err := configFile.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: unable to close configuration file: %v\n", err)
+		}
+	}()
 
 	config, err := io.ReadAll(configFile)
 	if err != nil {
-		return Config{}, fmt.Errorf("unable to read from configuration file: %w", err)
+		return Config{}, fmt.Errorf("unable to read configuration file: %w", err)
 	}
 
 	var cfg Config
@@ -96,38 +100,44 @@ func configLoad() (Config, error) {
 func configSave(cfg Config) error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return fmt.Errorf("unable to get configuration directory: %w", err)
+		return fmt.Errorf("unable to determine configuration directory: %w", err)
 	}
 
 	configPath := filepath.Join(configDir, configFileName)
 	tempFile, err := os.CreateTemp(configDir, "piphos-config-*.tmp")
 	if err != nil {
-		return fmt.Errorf("unable to create temporary config file: %w", err)
+		return fmt.Errorf("unable to create temporary configuration file: %w", err)
 	}
 	tempPath := tempFile.Name()
 
 	defer func() {
-		tempFile.Close()
-		os.Remove(tempPath)
+		if err := tempFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: unable to close temporary configuration file: %v\n", err)
+		}
+		if err := os.Remove(tempPath); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: unable to delete temporary configuration file: %v\n", err)
+		}
 	}()
 
 	configContent, err := json.MarshalIndent(cfg.UserConfig, "", "  ")
 	if err != nil {
-		return fmt.Errorf("unable to marshal configuration: %w", err)
+		return fmt.Errorf("unable to set configuration options: %w", err)
 	}
 
 	if _, err := tempFile.Write(configContent); err != nil {
-		return fmt.Errorf("unable to write configuration: %w", err)
+		return fmt.Errorf("unable to write temporary configuration file: %w", err)
 	}
 
 	if err := tempFile.Sync(); err != nil {
-		return fmt.Errorf("unable to sync configuration: %w", err)
+		return fmt.Errorf("unable to sync temporary configuration file: %w", err)
 	}
 
-	tempFile.Close()
+	if err := tempFile.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: unable to close temporary configuration file: %v\n", err)
+	}
 
 	if err := os.Rename(tempPath, configPath); err != nil {
-		return fmt.Errorf("unable to finalize configuration: %w", err)
+		return fmt.Errorf("unable to update configuration file: %w", err)
 	}
 
 	return nil

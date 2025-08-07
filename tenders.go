@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 )
 
 // Tender represents a service that can store and retrieve IP address data.
@@ -98,7 +99,7 @@ var TenderConfig = map[string]Tender{
 // file to avoid repeated API calls in future operations.
 func setupTender(cfg Config, tender string) (Tender, error) {
 	if len(TenderConfig) == 0 {
-		return Tender{}, fmt.Errorf("no configured tenders found\n")
+		return Tender{}, fmt.Errorf("no configured tenders found")
 	}
 
 	err := validateToken(cfg.UserConfig.Token, tender)
@@ -115,7 +116,7 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 		selectedTender.Payload.Description = PayloadDescription
 		selectedTender.Payload.Public = false
 	default:
-		return Tender{}, fmt.Errorf("unknown tender requested\n")
+		return Tender{}, fmt.Errorf("unknown tender requested")
 	}
 
 	if cfg.UserConfig.PiphosGistID == "" {
@@ -132,7 +133,11 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 		if err != nil {
 			return Tender{}, fmt.Errorf("unable to get response from tender %s: %w", selectedTender.Name, err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: unable to close response body: %v\n", err)
+			}
+		}()
 
 		respContent, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -155,7 +160,9 @@ func setupTender(cfg Config, tender string) (Tender, error) {
 		}
 
 		cfg.UserConfig.PiphosGistID = gistID
-		configSave(cfg)
+		if err := configSave(cfg); err != nil {
+			return Tender{}, fmt.Errorf("unable to save configuration file: %w", err)
+		}
 	}
 	return selectedTender, nil
 }
@@ -217,10 +224,14 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to get response from tender %s: %w", tender.Name, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: unable to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("tender %s returned status %d\n", tender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
 
 	if cfg.UserConfig.PiphosGistID == "" {
@@ -236,8 +247,11 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 		}
 
 		cfg.UserConfig.PiphosGistID = gist.ID
-		configSave(cfg)
+		if err := configSave(cfg); err != nil {
+			return "", fmt.Errorf("unable to save configuration file: %w", err)
+		}
 	}
+
 	return ip, nil
 }
 
@@ -258,7 +272,7 @@ func pushTender(cfg Config, tender Tender, ip string) (string, error) {
 // "<hostname>:<address>" to stdout.
 func pullTender(cfg Config, tender Tender) (string, error) {
 	if cfg.UserConfig.PiphosGistID == "" {
-		return "", fmt.Errorf("no piphos records on tender %s or piphos record ID not configured, try the push subcommand first\n", tender.Name)
+		return "", fmt.Errorf("no piphos records on tender %s or piphos record ID not configured, try the push subcommand first", tender.Name)
 	}
 
 	url := tender.URL + "/" + cfg.UserConfig.PiphosGistID
@@ -275,10 +289,14 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to get response from tender %s: %w", tender.Name, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: unable to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("tender %s returned status %d\n", tender.Name, resp.StatusCode)
+		return "", fmt.Errorf("tender %s returned status %d", tender.Name, resp.StatusCode)
 	}
 
 	respContent, err := io.ReadAll(resp.Body)
@@ -298,5 +316,6 @@ func pullTender(cfg Config, tender Tender) (string, error) {
 			}
 		}
 	}
+
 	return "", nil
 }

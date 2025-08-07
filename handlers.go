@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
 	"os"
 )
 
@@ -23,11 +23,16 @@ func handleCheckCommand(cfg Config, args []string) {
 	checkCmd := flag.NewFlagSet("check", flag.ExitOnError)
 	beacon := checkCmd.String("b", "", "specify a beacon (optional)")
 
-	checkCmd.Parse(args)
+	if err := checkCmd.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: unable to parse subcommand arguments: %v\n", err)
+		showUsage()
+		os.Exit(1)
+	}
 
 	err := validateCmd(checkCmd.NArg())
 	if err != nil {
-		log.Fatalf("error: unexpected arguments: %v: %v\n", checkCmd.Args(), err)
+		fmt.Fprintf(os.Stderr, "ERROR: unexpected arguments: %v: %v\n", checkCmd.Args(), err)
+		showUsage()
 		os.Exit(1)
 	}
 
@@ -38,7 +43,7 @@ func handleCheckCommand(cfg Config, args []string) {
 
 	_, err = contactBeacon(cfg, beaconName)
 	if err != nil {
-		log.Fatalf("error: unable to get public IP from beacon %s: %v\n", beaconName, err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to get public IP from beacon %s: %v\n", beaconName, err)
 		os.Exit(1)
 	}
 }
@@ -64,11 +69,16 @@ func handlePushCommand(cfg Config, args []string) {
 	beacon := pushCmd.String("b", "", "specify a beacon (optional)")
 	tender := pushCmd.String("t", "", "specify a tender")
 
-	pushCmd.Parse(args)
+	if err := pushCmd.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: unable to parse subcommand arguments: %v\n", err)
+		showUsage()
+		os.Exit(1)
+	}
 
 	err := validateCmd(pushCmd.NArg())
 	if err != nil {
-		log.Fatalf("error: unexpected arguments: %v: %v\n", pushCmd.Args(), err)
+		fmt.Fprintf(os.Stderr, "ERROR: unexpected arguments: %v: %v\n", pushCmd.Args(), err)
+		showUsage()
 		os.Exit(1)
 	}
 
@@ -77,7 +87,7 @@ func handlePushCommand(cfg Config, args []string) {
 		tenderName = cfg.UserConfig.Tender
 	}
 	if tenderName == "" {
-		log.Fatalf("error: tender must be specified with -t flag or configured in config file\n")
+		fmt.Fprintf(os.Stderr, "ERROR: tender must be specified with -t flag or configured in the configuration file\n")
 		os.Exit(1)
 	}
 
@@ -88,25 +98,25 @@ func handlePushCommand(cfg Config, args []string) {
 
 	publicIP, err := contactBeacon(cfg, beaconName)
 	if err != nil {
-		log.Fatalf("error: unable to get public IP from beacon %s: %v\n", beaconName, err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to get public IP from beacon %s: %v\n", beaconName, err)
 		os.Exit(1)
 	}
 
 	selectedTender, err := setupTender(cfg, tenderName)
 	if err != nil {
-		log.Fatalf("error: unable to setup tender %s: %v\n", tenderName, err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to setup tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 
 	cfg, err = configLoad()
 	if err != nil {
-		log.Fatalf("unable to reload configuration file: %v", err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to reload configuration file: %v\n", err)
 		os.Exit(1)
 	}
 
 	_, err = pushTender(cfg, selectedTender, publicIP)
 	if err != nil {
-		log.Fatalf("error: unable to push public IP to tender %s: %v\n", tenderName, err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to push public IP to tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 }
@@ -131,11 +141,16 @@ func handlePullCommand(cfg Config, args []string) {
 	pullCmd := flag.NewFlagSet("pull", flag.ExitOnError)
 	tender := pullCmd.String("t", "", "specify a tender")
 
-	pullCmd.Parse(args)
+	if err := pullCmd.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: unable to parse subcommand arguments: %v\n", err)
+		showUsage()
+		os.Exit(1)
+	}
 
 	err := validateCmd(pullCmd.NArg())
 	if err != nil {
-		log.Fatalf("error: unexpected arguments: %v: %v\n", pullCmd.Args(), err)
+		fmt.Fprintf(os.Stderr, "ERROR: unexpected arguments: %v: %v\n", pullCmd.Args(), err)
+		showUsage()
 		os.Exit(1)
 	}
 
@@ -144,24 +159,24 @@ func handlePullCommand(cfg Config, args []string) {
 		tenderName = cfg.UserConfig.Tender
 	}
 	if tenderName == "" {
-		log.Fatalf("error: tender must be specified with -t flag or configured in config file\n")
+		fmt.Fprintf(os.Stderr, "ERROR: tender must be specified with -t flag or configured in the configuration file\n")
 		os.Exit(1)
 	}
 
 	selectedTender, err := setupTender(cfg, tenderName)
 	if err != nil {
-		log.Fatalf("error: unable to setup tender %s: %v\n", tenderName, err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to setup tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 
 	cfg, err = configLoad()
 	if err != nil {
-		log.Fatalf("unable to reload configuration file: %v", err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to reload configuration file: %v\n", err)
 		os.Exit(1)
 	}
 	_, err = pullTender(cfg, selectedTender)
 	if err != nil {
-		log.Fatalf("error: unable to pull from tender %s: %v\n", tenderName, err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to pull from tender %s: %v\n", tenderName, err)
 		os.Exit(1)
 	}
 }
