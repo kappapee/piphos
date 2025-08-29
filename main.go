@@ -1,6 +1,6 @@
 // Package main implements piphos, a command-line tool for managing dynamic IP addresses
 // in homelabs. It provides functionality to detect public IP addresses using beacon
-// services and store/retrieve them using tender services like GitHub Gists.
+// services and store/retrieve them using tender services.
 //
 // The tool supports three main commands:
 //   - check: Detect and display the current public IP address
@@ -12,7 +12,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 )
 
@@ -22,12 +22,12 @@ import (
 func main() {
 	cfg, err := configLoad()
 	if err != nil {
-		log.Fatalf("error: unable to load configuration file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "ERROR: unable to load configuration file: %v\n", err)
 		os.Exit(1)
 	}
 
 	if len(os.Args) < 2 {
-		log.Printf("error: not enough arguments\n")
+		fmt.Fprint(os.Stderr, "ERROR: not enough arguments provided\n")
 		showUsage()
 		os.Exit(1)
 	}
@@ -40,7 +40,7 @@ func main() {
 	case "pull":
 		handlePullCommand(cfg, os.Args[2:])
 	default:
-		log.Printf("error: sub-command not found\n")
+		fmt.Fprintf(os.Stderr, "ERROR: subcommand %v not found\n", os.Args[1])
 		showUsage()
 		os.Exit(1)
 	}
