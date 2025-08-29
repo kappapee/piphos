@@ -1,24 +1,25 @@
-name: release
+name: goreleaser
 
 on:
   push:
     tags:
-      - "*"
+      - "v*"
+  pull_request:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
-  release:
-    name: Release project binary
-    timeout-minutes: 10
-
+  goreleaser:
+    name: Releasing
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install Go
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
