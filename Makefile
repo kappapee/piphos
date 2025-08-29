@@ -1,14 +1,15 @@
 install:
 	@go mod tidy
-	@go install golang.org/x/tools/cmd/goimports@latest
 
-format:
-	@go fmt ./...
-	@goimports -w .
+dev:
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
+	@go install github.com/goreleaser/goreleaser/v2@latest
 
 check:
-	@go vet ./...
-	@golangci-lint run ./... --fix
+	@golangci-lint run
+
+format:
+	@golangci-lint fmt
 
 test:
 	@go test ./...
@@ -17,12 +18,4 @@ run:
 	@go run .
 
 build:
-	@mkdir -p ./bin
-	@rm -f ./bin/*
-	GOOS=darwin GOARCH=amd64 go build -o ./bin/piphos-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -o ./bin/piphos-darwin-arm64 .
-	GOOS=linux GOARCH=amd64 go build -o ./bin/piphos-linux-amd64 .
-	GOOS=linux GOARCH=arm64 go build -o ./bin/piphos-linux-arm64 .
-	GOOS=windows GOARCH=amd64 go build -o ./bin/piphos-windows-amd64.exe .
-	GOOS=windows GOARCH=arm64 go build -o ./bin/piphos-windows-arm64.exe .
-
+	@goreleaser release --snapshot --clean
