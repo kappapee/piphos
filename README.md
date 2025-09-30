@@ -2,7 +2,7 @@
 
 **piphos** is a command-line tool for managing dynamic IP addresses in homelabs. It provides an easy way to detect your current public IP address and store it in cloud services for remote access.
 
-## 🎯 Why piphos?
+## 🎯 Motivation
 
 **Tired of playing IP address hide-and-seek with your homelab?**
 
@@ -14,7 +14,7 @@ You don't have to be paying for static IPs and VPSs or fight with dynamic DNS se
 
 You can let your computer tell you the information you want.
 
-### In a nutshell
+### Quick Start
 
 **At home:**
 ```bash
