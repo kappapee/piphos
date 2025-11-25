@@ -1,0 +1,38 @@
+name: CI
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["*"]
+jobs:
+  checks:
+    name: CI checks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ["1.25"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Setup project
+        run: go mod tidy && go mod download && go mod verify
+
+      - name: Check format
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Unformatted files:"
+            echo "$unformatted"
+            echo "Please run 'go fmt ./...' to format your code"
+            exit 1
+          fi
+
+      - name: Lint code
+        run: go vet ./...
+      - name: Test code
+        run: go test -v -cover ./...

@@ -1,7 +1,0 @@
-{
-  "hostname": "my-homelab-server",
-  "token": "GITHUB_TOKEN_WITH_GIST_PERMISSIONS",
-  "beacon": "aws",
-  "tender": "github",
-  "piphos_gist_id": ""
-}

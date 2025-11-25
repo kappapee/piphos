@@ -1,21 +1,41 @@
-install:
+.PHONY: help project format check test build ci clean
+.DEFAULT_GOAL := help
+
+BUILD_DIR=./bin/
+
+help: ## Show this help message
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Available targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+project: ## Setup project
+	@echo "Setting up project..."
 	@go mod tidy
+	@go mod download
+	@go mod verify
 
-dev:
-	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
-	@go install github.com/goreleaser/goreleaser/v2@latest
+format: ## Format code
+	@echo "Formatting code..."
+	@go fmt ./...
 
-check:
-	@golangci-lint run
+check: ## Lint code
+	@echo "Linting code..."
+	@go vet ./...
 
-format:
-	@golangci-lint fmt
+test: ## Test code
+	@echo "Running tests..."
+	@go test -race -cover ./...
 
-test:
-	@go test ./...
+build: ## Build binaries
+	@echo "Building binaries..."
+	@go build -o $(BUILD_DIR) ./cmd/...
 
-run:
-	@go run .
+ci: project format check test ## Run CI checks locally
+	@echo "CI checks completed."
 
-build:
-	@goreleaser release --snapshot --clean
+clean: ## Clean up project
+	@echo "Cleaning up project..."
+	@rm -rf $(BUILD_DIR)
+	@rm -f coverage.out coverage.html
+
