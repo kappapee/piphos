@@ -1,4 +1,4 @@
-.PHONY: help project format check test build ci clean
+.PHONY: help project format check test ci build clean
 .DEFAULT_GOAL := help
 
 BUILD_DIR=./bin/
@@ -27,12 +27,12 @@ test: ## Test code
 	@echo "Running tests..."
 	@go test -race -cover ./...
 
+ci: project format check test ## Run CI checks locally
+	@echo "CI checks completed."
+
 build: ## Build binaries
 	@echo "Building binaries..."
 	@go build -o $(BUILD_DIR) ./cmd/...
-
-ci: project format check test ## Run CI checks locally
-	@echo "CI checks completed."
 
 clean: ## Clean up project
 	@echo "Cleaning up project..."
