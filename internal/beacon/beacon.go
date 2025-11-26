@@ -17,15 +17,15 @@ type Beacon interface {
 }
 
 type HTTPBeacon struct {
-	client  *http.Client
 	baseURL string
+	client  *http.Client
 	name    string
 }
 
-func NewHTTPBeacon(name, baseURL string) *HTTPBeacon {
+func NewHTTPBeacon(baseURL, name string) *HTTPBeacon {
 	return &HTTPBeacon{
-		client:  &http.Client{Timeout: config.HTTPClientTimeout},
 		baseURL: baseURL,
+		client:  &http.Client{Timeout: config.HTTPClientTimeout},
 		name:    name,
 	}
 }
@@ -33,7 +33,9 @@ func NewHTTPBeacon(name, baseURL string) *HTTPBeacon {
 func New(beacon string) (*HTTPBeacon, error) {
 	switch beacon {
 	case "haz":
-		return NewHTTPBeacon("haz", "https://ipv4.icanhazip.com"), nil
+		return NewHTTPBeacon("https://ipv4.icanhazip.com", "haz"), nil
+	case "aws":
+		return NewHTTPBeacon("https://checkip.amazonaws.com", "aws"), nil
 	default:
 		return nil, fmt.Errorf("unknown beacon: %s", beacon)
 	}

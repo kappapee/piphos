@@ -1,6 +1,8 @@
 package tender
 
-import "context"
+import (
+	"context"
+)
 
 type Tender interface {
 	Pull(ctx context.Context) (map[string]string, error)
