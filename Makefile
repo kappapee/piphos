@@ -38,4 +38,3 @@ clean: ## Clean up project
 	@echo "Cleaning up project..."
 	@rm -rf $(BUILD_DIR)
 	@rm -f coverage.out coverage.html
-
