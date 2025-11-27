@@ -14,7 +14,7 @@ func Ping(ctx context.Context, args []string) (string, error) {
 	fs.Parse(args)
 	b, err := beacon.New(*bs)
 	if err != nil {
-		return "", fmt.Errorf("unable to create beacon: %v", err)
+		return "", fmt.Errorf("failed to get beacon %s: %w", *bs, err)
 	}
 	return b.Ping(ctx)
 }
