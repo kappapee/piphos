@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -51,18 +52,19 @@ type gistFile struct {
 }
 
 func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
-	results := map[string]string{}
 	gist, err := gh.fetchGistByDescription(ctx)
 	if err != nil {
-		return results, err
+		return nil, err
 	}
-	if gist == nil || len(gist.Files) == 0 {
-		return results, nil
+	if gist == nil {
+		return nil, fmt.Errorf("no hosts found on tender %s: %w", gh.name, err)
 	}
-	for _, f := range gist.Files {
-		results[f.Filename] = f.Content
+	gistContent := gist.Files[config.PiphosStamp].Content
+	var hosts map[string]string
+	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
 	}
-	return map[string]string{}, nil
+	return hosts, nil
 }
 
 func (gh *github) Push(ctx context.Context, hostname, ip string) error {
@@ -77,14 +79,17 @@ func (gh *github) Push(ctx context.Context, hostname, ip string) error {
 		}
 		return nil
 	}
-	for _, g := range gist.Files {
-		if g.Filename == hostname && g.Content != ip {
-			err := gh.updateGist(ctx, hostname, ip, gist.ID)
-			if err != nil {
-				return err
-			}
-			return nil
+	gistContent := gist.Files[config.PiphosStamp].Content
+	var hosts map[string]string
+	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
+		return fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
+	}
+	if hosts[hostname] != ip {
+		err := gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
+		if err != nil {
+			return err
 		}
+		return nil
 	}
 	return nil
 }
@@ -110,9 +115,13 @@ func (gh *github) fetchGistByDescription(ctx context.Context) (*Gist, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected GET response status from tender %s: %d", gh.name, resp.StatusCode)
 	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read GET response body from tender %s: %w", gh.name, err)
+	}
 	var gists []Gist
-	if err := json.NewDecoder(resp.Body).Decode(&gists); err != nil {
-		return nil, fmt.Errorf("failed to decode GET response json from tender %s: %w", gh.name, err)
+	if err := json.Unmarshal(body, &gists); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
 	}
 	for _, g := range gists {
 		if g.Description == config.PiphosStamp {
@@ -123,22 +132,24 @@ func (gh *github) fetchGistByDescription(ctx context.Context) (*Gist, error) {
 }
 
 func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
-	initGistFile := gistFile{Filename: config.PiphosStamp, Content: config.PiphosStamp}
-	file := gistFile{Filename: hostname, Content: ip}
-	newGist := Gist{
+	host := map[string]string{hostname: ip}
+	hb, err := json.Marshal(host)
+	if err != nil {
+		return fmt.Errorf("failed to marshal host json for tender %s: %w", gh.name, err)
+	}
+	gf := gistFile{Filename: config.PiphosStamp, Content: string(hb)}
+	gist := Gist{
 		Description: config.PiphosStamp,
 		Public:      false,
 		Files: map[string]gistFile{
-			config.PiphosStamp: initGistFile,
-			hostname:           file,
+			config.PiphosStamp: gf,
 		},
 	}
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(newGist)
+	gb, err := json.Marshal(gist)
 	if err != nil {
-		return fmt.Errorf("failed to encode POST request json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal POST request json for tender %s: %w", gh.name, err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, gh.baseURL, &buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, gh.baseURL, bytes.NewReader(gb))
 	if err != nil {
 		return fmt.Errorf("failed to create POST request for tender %s: %w", gh.name, err)
 	}
@@ -161,26 +172,28 @@ func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
 	return nil
 }
 
-func (gh *github) updateGist(ctx context.Context, hostname, ip, gistID string) error {
-	initGistFile := gistFile{Filename: config.PiphosStamp, Content: config.PiphosStamp}
-	file := gistFile{Filename: hostname, Content: ip}
-	newGist := Gist{
+func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]string, hostname, ip string) error {
+	hosts[hostname] = ip
+	hb, err := json.Marshal(hosts)
+	if err != nil {
+		return fmt.Errorf("failed to marshal host json for tender %s: %w", gh.name, err)
+	}
+	gf := gistFile{Filename: config.PiphosStamp, Content: string(hb)}
+	gist := Gist{
 		Description: config.PiphosStamp,
 		Public:      false,
 		Files: map[string]gistFile{
-			config.PiphosStamp: initGistFile,
-			hostname:           file,
+			config.PiphosStamp: gf,
 		},
 	}
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(newGist)
+	gb, err := json.Marshal(gist)
 	if err != nil {
-		return fmt.Errorf("failed to encode PATCH request json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal PUT request json for tender %s: %w", gh.name, err)
 	}
-	patchURL := gh.baseURL + "/" + gistID
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, &buf)
+	putURL := gh.baseURL + "/" + id
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, putURL, bytes.NewReader(gb))
 	if err != nil {
-		return fmt.Errorf("failed to create PATCH request for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to create PUT request for tender %s: %w", gh.name, err)
 	}
 	for k, v := range gh.headers {
 		req.Header.Set(k, v)
@@ -188,15 +201,15 @@ func (gh *github) updateGist(ctx context.Context, hostname, ip, gistID string) e
 	req.Header.Set("Authorization", "Bearer "+gh.token)
 	resp, err := gh.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to get PATCH response from tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to get PUT response from tender %s: %w", gh.name, err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to close PATCH response body: %v\n", err)
+			fmt.Fprintf(os.Stderr, "failed to close PUT response body: %v\n", err)
 		}
 	}()
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("unexpected PATCH response status from tender %s: %d", gh.name, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected PUT response status from tender %s: %d", gh.name, resp.StatusCode)
 	}
 	return nil
 }

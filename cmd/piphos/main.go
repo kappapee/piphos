@@ -40,7 +40,7 @@ func main() {
 			os.Exit(1)
 		}
 		if err := exec.Push(ctx, os.Args[2:], publicIP); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to run pull command: %v\n", err)
+			fmt.Fprintf(os.Stderr, "failed to run push command: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Fprintln(os.Stdout, publicIP)
