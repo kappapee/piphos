@@ -52,12 +52,16 @@ type gistFile struct {
 }
 
 func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
-	gist, err := gh.fetchGistByDescription(ctx)
+	id, err := gh.fetchGistIDByDescription(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch gist ID by description: %w", err)
+	}
+	if id == "" {
+		return nil, fmt.Errorf("no hosts gist found on tender %s: %w", gh.name, err)
+	}
+	gist, err := gh.fetchGistByID(ctx, id)
 	if err != nil {
 		return nil, err
-	}
-	if gist == nil {
-		return nil, fmt.Errorf("no hosts found on tender %s: %w", gh.name, err)
 	}
 	gistContent := gist.Files[config.PiphosStamp].Content
 	var hosts map[string]string
@@ -68,34 +72,77 @@ func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 }
 
 func (gh *github) Push(ctx context.Context, hostname, ip string) error {
-	gist, err := gh.fetchGistByDescription(ctx)
+	id, err := gh.fetchGistIDByDescription(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to fetch gist by description: %w", err)
+		return fmt.Errorf("failed to fetch gist ID by description: %w", err)
 	}
-	if gist == nil {
+	if id == "" {
 		err := gh.createGist(ctx, hostname, ip)
 		if err != nil {
 			return err
 		}
 		return nil
-	}
-	gistContent := gist.Files[config.PiphosStamp].Content
-	var hosts map[string]string
-	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
-		return fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
-	}
-	if hosts[hostname] != ip {
-		err := gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
+	} else {
+		gist, err := gh.fetchGistByID(ctx, id)
 		if err != nil {
 			return err
 		}
+		gistContent := gist.Files[config.PiphosStamp].Content
+		var hosts map[string]string
+		if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
+			return fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
+		}
+		if hosts[hostname] != ip {
+			err := gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
 		return nil
 	}
-	return nil
 }
 
-func (gh *github) fetchGistByDescription(ctx context.Context) (*Gist, error) {
+func (gh *github) fetchGistIDByDescription(ctx context.Context) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, gh.baseURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GET request for tender %s: %w", gh.name, err)
+	}
+	for k, v := range gh.headers {
+		req.Header.Set(k, v)
+	}
+	req.Header.Set("Authorization", "Bearer "+gh.token)
+	resp, err := gh.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to receive GET response from tender %s: %w", gh.name, err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close GET response body: %v\n", err)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected GET response status from tender %s: %d", gh.name, resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read GET response body from tender %s: %w", gh.name, err)
+	}
+	var gists []Gist
+	if err := json.Unmarshal(body, &gists); err != nil {
+		return "", fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
+	}
+	for _, g := range gists {
+		if g.Description == config.PiphosStamp {
+			return g.ID, nil
+		}
+	}
+	return "", nil
+}
+
+func (gh *github) fetchGistByID(ctx context.Context, id string) (*Gist, error) {
+	getURL := gh.baseURL + "/" + id
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GET request for tender %s: %w", gh.name, err)
 	}
@@ -105,7 +152,7 @@ func (gh *github) fetchGistByDescription(ctx context.Context) (*Gist, error) {
 	req.Header.Set("Authorization", "Bearer "+gh.token)
 	resp, err := gh.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to receive GET response from tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("failed to get GET response from tender %s: %w", gh.name, err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -119,16 +166,11 @@ func (gh *github) fetchGistByDescription(ctx context.Context) (*Gist, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read GET response body from tender %s: %w", gh.name, err)
 	}
-	var gists []Gist
-	if err := json.Unmarshal(body, &gists); err != nil {
+	var gist Gist
+	if err := json.Unmarshal(body, &gist); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
 	}
-	for _, g := range gists {
-		if g.Description == config.PiphosStamp {
-			return &g, nil
-		}
-	}
-	return nil, nil
+	return &gist, nil
 }
 
 func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
