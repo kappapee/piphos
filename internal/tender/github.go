@@ -93,7 +93,7 @@ func (gh *github) Push(ctx context.Context, hostname, ip string) error {
 			return fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
 		}
 		if hosts[hostname] != ip {
-			err := gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
+			err := gh.updateGist(ctx, id, hosts, hostname, ip)
 			if err != nil {
 				return err
 			}
@@ -230,12 +230,12 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 	}
 	gb, err := json.Marshal(gist)
 	if err != nil {
-		return fmt.Errorf("failed to marshal PUT request json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal PATCH request json for tender %s: %w", gh.name, err)
 	}
-	putURL := gh.baseURL + "/" + id
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, putURL, bytes.NewReader(gb))
+	patchURL := gh.baseURL + "/" + id
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, bytes.NewReader(gb))
 	if err != nil {
-		return fmt.Errorf("failed to create PUT request for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to create PATCH request for tender %s: %w", gh.name, err)
 	}
 	for k, v := range gh.headers {
 		req.Header.Set(k, v)
@@ -243,15 +243,15 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 	req.Header.Set("Authorization", "Bearer "+gh.token)
 	resp, err := gh.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to get PUT response from tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to get PATCH response from tender %s: %w", gh.name, err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to close PUT response body: %v\n", err)
+			fmt.Fprintf(os.Stderr, "failed to close PATCH response body: %v\n", err)
 		}
 	}()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected PUT response status from tender %s: %d", gh.name, resp.StatusCode)
+		return fmt.Errorf("unexpected PATCH response status from tender %s: %d", gh.name, resp.StatusCode)
 	}
 	return nil
 }
