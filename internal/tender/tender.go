@@ -14,13 +14,13 @@ type Tender interface {
 }
 
 func New(tender string) (Tender, error) {
-	token := os.Getenv("PIPHOS_TOKEN")
-	err := validate.Token(token)
-	if err != nil {
-		return nil, err
-	}
 	switch tender {
 	case "gh":
+		token := os.Getenv("GITHUB_TOKEN")
+		err := validate.Token(token)
+		if err != nil {
+			return nil, err
+		}
 		return newGithub(token), nil
 	default:
 		return nil, fmt.Errorf("unknown tender: %s", tender)

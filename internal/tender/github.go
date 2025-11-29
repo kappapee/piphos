@@ -61,7 +61,7 @@ func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 	}
 	gistPiphosFile, ok := gist.Files[config.PiphosStamp]
 	if !ok {
-		return nil, fmt.Errorf("gist missing %s file on tender %s", config.PiphosStamp, gh.name)
+		return nil, fmt.Errorf("gist missing file: %s", config.PiphosStamp)
 	}
 	gistContentString := gistPiphosFile.Content
 	var gistContent map[string]string
