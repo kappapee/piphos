@@ -3,6 +3,7 @@ package tender
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/kappapee/piphos/internal/validate"
 )
@@ -13,14 +14,14 @@ type Tender interface {
 }
 
 func New(tender string) (Tender, error) {
+	token := os.Getenv("PIPHOS_TOKEN")
+	err := validate.Token(token)
+	if err != nil {
+		return nil, err
+	}
 	switch tender {
 	case "gh":
-		t := newGithub()
-		err := validate.Token(t.token)
-		if err != nil {
-			return nil, err
-		}
-		return t, nil
+		return newGithub(token), nil
 	default:
 		return nil, fmt.Errorf("unknown tender: %s", tender)
 	}

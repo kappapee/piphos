@@ -25,7 +25,7 @@ type github struct {
 	token   string
 }
 
-func newGithub() *github {
+func newGithub(token string) *github {
 	return &github{
 		baseURL: githubURL,
 		client:  &http.Client{Timeout: config.HTTPClientTimeout},
@@ -35,7 +35,7 @@ func newGithub() *github {
 			"X-GitHub-Api-Version": "2022-11-28",
 		},
 		name:  githubName,
-		token: os.Getenv("PIPHOS_GITHUB_TOKEN"),
+		token: token,
 	}
 }
 
@@ -57,75 +57,77 @@ func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 		return nil, err
 	}
 	if gist == nil {
-		return nil, fmt.Errorf("no hosts gist found on tender %s", gh.name)
+		return nil, fmt.Errorf("no piphos gist found")
 	}
-	gf, ok := gist.Files[config.PiphosStamp]
+	gistPiphosFile, ok := gist.Files[config.PiphosStamp]
 	if !ok {
 		return nil, fmt.Errorf("gist missing %s file on tender %s", config.PiphosStamp, gh.name)
 	}
-	gistContent := gf.Content
-	var hosts map[string]string
-	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
+	gistContentString := gistPiphosFile.Content
+	var gistContent map[string]string
+	if err := json.Unmarshal([]byte(gistContentString), &gistContent); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal content: %w", err)
 	}
-	return hosts, nil
+	return gistContent, nil
 }
 
-func (gh *github) Push(ctx context.Context, hostname, ip string) error {
+func (gh *github) Push(ctx context.Context, localHostname, publicIP string) error {
 	gist, err := gh.readGist(ctx)
 	if err != nil {
 		return err
 	}
 	if gist == nil {
-		return gh.createGist(ctx, hostname, ip)
+		return gh.createGist(ctx, localHostname, publicIP)
 	}
-	gf, ok := gist.Files[config.PiphosStamp]
+	gistPiphosFile, ok := gist.Files[config.PiphosStamp]
 	if !ok {
-		return fmt.Errorf("gist missing %s file on tender %s", config.PiphosStamp, gh.name)
+		return fmt.Errorf("gist missing file: %s", config.PiphosStamp)
 	}
-	gistContent := gf.Content
-	var hosts map[string]string
-	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
-		return fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
+	gistContentString := gistPiphosFile.Content
+	var gistContent map[string]string
+	if err := json.Unmarshal([]byte(gistContentString), &gistContent); err != nil {
+		return fmt.Errorf("failed to unmarshal content: %w", err)
 	}
-	if hosts[hostname] != ip {
-		return gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
+	if gistContent[localHostname] != publicIP {
+		return gh.updateGist(ctx, gist.ID, gistContent, localHostname, publicIP)
 	}
 	return nil
 }
 
-func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
-	host := map[string]string{hostname: ip}
-	hb, err := json.Marshal(host)
+func (gh *github) createGist(ctx context.Context, localHostname, publicIP string) error {
+	gistContent := map[string]string{localHostname: publicIP}
+	content, err := json.Marshal(gistContent)
 	if err != nil {
-		return fmt.Errorf("failed to marshal host json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal content: %w", err)
 	}
-	gf := gistFile{Filename: config.PiphosStamp, Content: string(hb)}
-	gist := gist{
+	gistPayload := gist{
 		Description: config.PiphosStamp,
 		Public:      false,
 		Files: map[string]gistFile{
-			config.PiphosStamp: gf,
+			config.PiphosStamp: {
+				Filename: config.PiphosStamp,
+				Content:  string(content),
+			},
 		},
 	}
-	gb, err := json.Marshal(gist)
+	gistRequestBody, err := json.Marshal(gistPayload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal POST request json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	if _, err := gh.gistRequest(ctx, http.MethodPost, gh.baseURL, http.StatusCreated, gb); err != nil {
+	if _, err := gh.gistRequest(ctx, http.MethodPost, gh.baseURL, http.StatusCreated, gistRequestBody); err != nil {
 		return fmt.Errorf("failed to complete gist request: %w", err)
 	}
 	return nil
 }
 
 func (gh *github) readGist(ctx context.Context) (*gist, error) {
-	gistsBody, err := gh.gistRequest(ctx, http.MethodGet, gh.baseURL, http.StatusOK, nil)
+	gistsResponseBody, err := gh.gistRequest(ctx, http.MethodGet, gh.baseURL, http.StatusOK, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to complete gist request: %w", err)
 	}
 	var gists []gist
-	if err := json.Unmarshal(gistsBody, &gists); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response from tender %s: %w", gh.name, err)
+	if err := json.Unmarshal(gistsResponseBody, &gists); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	var gistID string
 	for _, g := range gists {
@@ -137,51 +139,53 @@ func (gh *github) readGist(ctx context.Context) (*gist, error) {
 	if gistID == "" {
 		return nil, nil
 	}
-	url := fmt.Sprintf("%s/%s", gh.baseURL, gistID)
-	gistBody, err := gh.gistRequest(ctx, http.MethodGet, url, http.StatusOK, nil)
+	URL := fmt.Sprintf("%s/%s", gh.baseURL, gistID)
+	gistResponseBody, err := gh.gistRequest(ctx, http.MethodGet, URL, http.StatusOK, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to complete gist request: %w", err)
 	}
 	var gist gist
-	if err := json.Unmarshal(gistBody, &gist); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
+	if err := json.Unmarshal(gistResponseBody, &gist); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	return &gist, nil
 }
 
-func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]string, hostname, ip string) error {
-	hosts[hostname] = ip
-	hb, err := json.Marshal(hosts)
+func (gh *github) updateGist(ctx context.Context, gistID string, gistContent map[string]string, localHostname, publicIP string) error {
+	gistContent[localHostname] = publicIP
+	content, err := json.Marshal(gistContent)
 	if err != nil {
-		return fmt.Errorf("failed to marshal host json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal content: %w", err)
 	}
-	gf := gistFile{Filename: config.PiphosStamp, Content: string(hb)}
-	gist := gist{
+	gistPayload := gist{
 		Description: config.PiphosStamp,
 		Public:      false,
 		Files: map[string]gistFile{
-			config.PiphosStamp: gf,
+			config.PiphosStamp: {
+				Filename: config.PiphosStamp,
+				Content:  string(content),
+			},
 		},
 	}
-	gb, err := json.Marshal(gist)
+	gistRequestBody, err := json.Marshal(gistPayload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal PATCH request json for tender %s: %w", gh.name, err)
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	url := fmt.Sprintf("%s/%s", gh.baseURL, id)
-	if _, err := gh.gistRequest(ctx, http.MethodPatch, url, http.StatusOK, gb); err != nil {
+	URL := fmt.Sprintf("%s/%s", gh.baseURL, gistID)
+	if _, err := gh.gistRequest(ctx, http.MethodPatch, URL, http.StatusOK, gistRequestBody); err != nil {
 		return fmt.Errorf("failed to complete gist request: %w", err)
 	}
 	return nil
 }
 
-func (gh *github) gistRequest(ctx context.Context, method, url string, expectStatus int, body []byte) ([]byte, error) {
-	var reqBody io.Reader
-	if body != nil {
-		reqBody = bytes.NewReader(body)
+func (gh *github) gistRequest(ctx context.Context, HTTPMethod, URL string, expectedStatus int, requestBody []byte) ([]byte, error) {
+	var requestBodyReader io.Reader
+	if requestBody != nil {
+		requestBodyReader = bytes.NewReader(requestBody)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
+	req, err := http.NewRequestWithContext(ctx, HTTPMethod, URL, requestBodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request for tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	for k, v := range gh.headers {
 		req.Header.Set(k, v)
@@ -189,19 +193,19 @@ func (gh *github) gistRequest(ctx context.Context, method, url string, expectSta
 	req.Header.Set("Authorization", "Bearer "+gh.token)
 	resp, err := gh.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get response from tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("failed to get response: %w", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to close response body: %v\n", err)
 		}
 	}()
-	if resp.StatusCode != expectStatus {
-		return nil, fmt.Errorf("unexpected response status from tender %s: %d", gh.name, resp.StatusCode)
+	if resp.StatusCode != expectedStatus {
+		return nil, fmt.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
-	respBody, err := io.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body from tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
-	return respBody, nil
+	return responseBody, nil
 }
