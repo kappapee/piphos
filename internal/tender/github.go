@@ -59,7 +59,7 @@ func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 	if id == "" {
 		return nil, fmt.Errorf("no hosts gist found on tender %s: %w", gh.name, err)
 	}
-	gist, err := gh.fetchGistByID(ctx, id)
+	gist, err := gh.readGist(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (gh *github) Push(ctx context.Context, hostname, ip string) error {
 		}
 		return nil
 	} else {
-		gist, err := gh.fetchGistByID(ctx, id)
+		gist, err := gh.readGist(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -140,39 +140,6 @@ func (gh *github) fetchGistIDByDescription(ctx context.Context) (string, error) 
 	return "", nil
 }
 
-func (gh *github) fetchGistByID(ctx context.Context, id string) (*Gist, error) {
-	getURL := gh.baseURL + "/" + id
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GET request for tender %s: %w", gh.name, err)
-	}
-	for k, v := range gh.headers {
-		req.Header.Set(k, v)
-	}
-	req.Header.Set("Authorization", "Bearer "+gh.token)
-	resp, err := gh.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get GET response from tender %s: %w", gh.name, err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to close GET response body: %v\n", err)
-		}
-	}()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected GET response status from tender %s: %d", gh.name, resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read GET response body from tender %s: %w", gh.name, err)
-	}
-	var gist Gist
-	if err := json.Unmarshal(body, &gist); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
-	}
-	return &gist, nil
-}
-
 func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
 	host := map[string]string{hostname: ip}
 	hb, err := json.Marshal(host)
@@ -191,27 +158,23 @@ func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal POST request json for tender %s: %w", gh.name, err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, gh.baseURL, bytes.NewReader(gb))
-	if err != nil {
-		return fmt.Errorf("failed to create POST request for tender %s: %w", gh.name, err)
-	}
-	for k, v := range gh.headers {
-		req.Header.Set(k, v)
-	}
-	req.Header.Set("Authorization", "Bearer "+gh.token)
-	resp, err := gh.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to receive POST response from tender %s: %w", gh.name, err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to close POST response body: %v\n", err)
-		}
-	}()
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("unexpected POST response status from tender %s: %d", gh.name, resp.StatusCode)
+	if _, err := gh.gistRequest(ctx, http.MethodPost, gh.baseURL, http.StatusCreated, bytes.NewReader(gb)); err != nil {
+		return fmt.Errorf("failed to complete gist request: %w", err)
 	}
 	return nil
+}
+
+func (gh *github) readGist(ctx context.Context, id string) (*Gist, error) {
+	var gist Gist
+	url := gh.baseURL + "/" + id
+	body, err := gh.gistRequest(ctx, http.MethodGet, url, http.StatusOK, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to complete gist request: %w", err)
+	}
+	if err := json.Unmarshal(body, &gist); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
+	}
+	return &gist, nil
 }
 
 func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]string, hostname, ip string) error {
@@ -232,10 +195,17 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 	if err != nil {
 		return fmt.Errorf("failed to marshal PATCH request json for tender %s: %w", gh.name, err)
 	}
-	patchURL := gh.baseURL + "/" + id
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, bytes.NewReader(gb))
+	url := gh.baseURL + "/" + id
+	if _, err := gh.gistRequest(ctx, http.MethodPatch, url, http.StatusOK, bytes.NewReader(gb)); err != nil {
+		return fmt.Errorf("failed to complete gist request: %w", err)
+	}
+	return nil
+}
+
+func (gh *github) gistRequest(ctx context.Context, method, url string, expectStatus int, body *bytes.Reader) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return fmt.Errorf("failed to create PATCH request for tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("failed to create request for tender %s: %w", gh.name, err)
 	}
 	for k, v := range gh.headers {
 		req.Header.Set(k, v)
@@ -243,15 +213,20 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 	req.Header.Set("Authorization", "Bearer "+gh.token)
 	resp, err := gh.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to get PATCH response from tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("failed to get response from tender %s: %w", gh.name, err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to close PATCH response body: %v\n", err)
+			fmt.Fprintf(os.Stderr, "failed to close response body: %v\n", err)
 		}
 	}()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected PATCH response status from tender %s: %d", gh.name, resp.StatusCode)
+	if resp.StatusCode != expectStatus {
+		return nil, fmt.Errorf("unexpected response status from tender %s: %d", gh.name, resp.StatusCode)
 	}
-	return nil
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body from tender %s: %w", gh.name, err)
+	}
+	fmt.Fprintf(os.Stdout, "DEBUG: respBody: %v", respBody)
+	return respBody, nil
 }
