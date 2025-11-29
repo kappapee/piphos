@@ -22,7 +22,6 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Fprintln(os.Stdout, publicIP)
-		os.Exit(0)
 	case "pull":
 		hosts, err := exec.Pull(ctx, os.Args[2:])
 		if err != nil {
@@ -32,7 +31,6 @@ func main() {
 		for k, v := range hosts {
 			fmt.Fprintf(os.Stdout, "%s: %s\n", k, v)
 		}
-		os.Exit(0)
 	case "push":
 		publicIP, err := exec.Ping(ctx, []string{"beacon"})
 		if err != nil {
@@ -44,8 +42,8 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Fprintln(os.Stdout, publicIP)
-		os.Exit(0)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %v\n", os.Args[1])
+		os.Exit(1)
 	}
 }

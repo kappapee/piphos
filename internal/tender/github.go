@@ -39,7 +39,7 @@ func newGithub() *github {
 	}
 }
 
-type Gist struct {
+type gist struct {
 	ID          string              `json:"id"`
 	Description string              `json:"description"`
 	Public      bool                `json:"public"`
@@ -57,9 +57,13 @@ func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 		return nil, err
 	}
 	if gist == nil {
-		return nil, fmt.Errorf("no hosts gist found on tender %s: %w", gh.name, err)
+		return nil, fmt.Errorf("no hosts gist found on tender %s", gh.name)
 	}
-	gistContent := gist.Files[config.PiphosStamp].Content
+	gf, ok := gist.Files[config.PiphosStamp]
+	if !ok {
+		return nil, fmt.Errorf("gist missing %s file on tender %s", config.PiphosStamp, gh.name)
+	}
+	gistContent := gf.Content
 	var hosts map[string]string
 	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
@@ -73,23 +77,19 @@ func (gh *github) Push(ctx context.Context, hostname, ip string) error {
 		return err
 	}
 	if gist == nil {
-		err := gh.createGist(ctx, hostname, ip)
-		if err != nil {
-			return err
-		}
-		return nil
+		return gh.createGist(ctx, hostname, ip)
 	}
-	gistContent := gist.Files[config.PiphosStamp].Content
+	gf, ok := gist.Files[config.PiphosStamp]
+	if !ok {
+		return fmt.Errorf("gist missing %s file on tender %s", config.PiphosStamp, gh.name)
+	}
+	gistContent := gf.Content
 	var hosts map[string]string
 	if err := json.Unmarshal([]byte(gistContent), &hosts); err != nil {
 		return fmt.Errorf("failed to unmarshal hosts json from tender %s: %w", gh.name, err)
 	}
 	if hosts[hostname] != ip {
-		err := gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
-		if err != nil {
-			return err
-		}
-		return nil
+		return gh.updateGist(ctx, gist.ID, hosts, hostname, ip)
 	}
 	return nil
 }
@@ -101,7 +101,7 @@ func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
 		return fmt.Errorf("failed to marshal host json for tender %s: %w", gh.name, err)
 	}
 	gf := gistFile{Filename: config.PiphosStamp, Content: string(hb)}
-	gist := Gist{
+	gist := gist{
 		Description: config.PiphosStamp,
 		Public:      false,
 		Files: map[string]gistFile{
@@ -118,12 +118,12 @@ func (gh *github) createGist(ctx context.Context, hostname, ip string) error {
 	return nil
 }
 
-func (gh *github) readGist(ctx context.Context) (*Gist, error) {
+func (gh *github) readGist(ctx context.Context) (*gist, error) {
 	gistsBody, err := gh.gistRequest(ctx, http.MethodGet, gh.baseURL, http.StatusOK, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to complete gist request: %w", err)
 	}
-	var gists []Gist
+	var gists []gist
 	if err := json.Unmarshal(gistsBody, &gists); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response from tender %s: %w", gh.name, err)
 	}
@@ -137,12 +137,12 @@ func (gh *github) readGist(ctx context.Context) (*Gist, error) {
 	if gistID == "" {
 		return nil, nil
 	}
-	url := gh.baseURL + "/" + gistID
+	url := fmt.Sprintf("%s/%s", gh.baseURL, gistID)
 	gistBody, err := gh.gistRequest(ctx, http.MethodGet, url, http.StatusOK, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to complete gist request: %w", err)
 	}
-	var gist Gist
+	var gist gist
 	if err := json.Unmarshal(gistBody, &gist); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal GET response json from tender %s: %w", gh.name, err)
 	}
@@ -156,7 +156,7 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 		return fmt.Errorf("failed to marshal host json for tender %s: %w", gh.name, err)
 	}
 	gf := gistFile{Filename: config.PiphosStamp, Content: string(hb)}
-	gist := Gist{
+	gist := gist{
 		Description: config.PiphosStamp,
 		Public:      false,
 		Files: map[string]gistFile{
@@ -167,7 +167,7 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 	if err != nil {
 		return fmt.Errorf("failed to marshal PATCH request json for tender %s: %w", gh.name, err)
 	}
-	url := gh.baseURL + "/" + id
+	url := fmt.Sprintf("%s/%s", gh.baseURL, id)
 	if _, err := gh.gistRequest(ctx, http.MethodPatch, url, http.StatusOK, gb); err != nil {
 		return fmt.Errorf("failed to complete gist request: %w", err)
 	}
@@ -175,7 +175,11 @@ func (gh *github) updateGist(ctx context.Context, id string, hosts map[string]st
 }
 
 func (gh *github) gistRequest(ctx context.Context, method, url string, expectStatus int, body []byte) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
+	var reqBody io.Reader
+	if body != nil {
+		reqBody = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request for tender %s: %w", gh.name, err)
 	}
