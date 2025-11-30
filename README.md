@@ -82,7 +82,7 @@ This will install the latest version of piphos to your `$GOPATH/bin` directory. 
 ```bash
 git clone https://github.com/kappapee/piphos.git
 cd piphos
-make build
+go build -o ./bin/ ./cmd/...
 ```
 
 ## Getting started
