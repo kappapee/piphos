@@ -49,14 +49,14 @@ func Pull(ctx context.Context, args []string) (map[string]string, error) {
 }
 
 // Push updates the current hostname's IP address in the specified tender provider.
-// The beacon provider can be specified with the -beacon flag (default: "aws").
 // The tender provider can be specified with the -tender flag (default: "gh").
 // Requires PIPHOS_GITHUB_TOKEN environment variable for the "gh" provider.
+// The beacon provider can be specified with the -beacon flag (default: "aws").
 // The hostname is automatically detected from the system.
 func Push(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("push", flag.ExitOnError)
 	ts := fs.String("tender", "gh", "which tender provider to use")
-	bs := fs.String("beacon", "aws", "which tender provider to use")
+	bs := fs.String("beacon", "aws", "which beacon provider to use")
 	fs.Parse(args)
 	if err := validate.Command(fs.NArg()); err != nil {
 		return err
@@ -103,8 +103,8 @@ func Help() {
 	fmt.Println("  piphos pull -tender gh                    # retrieve stored hostname->IP map from specific tender")
 	fmt.Println("")
 	fmt.Println("available beacons:")
-	fmt.Println("  aws                                       # https://checkip.amazonaws.com")
-	fmt.Println("  haz (default)                             # https://ipv4.icanhazip.com")
+	fmt.Println("  aws (default)                             # https://checkip.amazonaws.com")
+	fmt.Println("  haz                                       # https://icanhazip.com")
 	fmt.Println("")
 	fmt.Println("available tenders:")
 	fmt.Println("  gh (default)                              # GitHub Gists")

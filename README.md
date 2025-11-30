@@ -116,7 +116,7 @@ Detects your current public IP address.
 **Usage**: `piphos ping [-beacon=PROVIDER]`
 
 **Flags**:
-- `-beacon string` - Beacon provider to use (default "haz")
+- `-beacon string` - Beacon provider to use (default "aws")
   - Options: "haz" (icanhazip.com), "aws" (checkip.amazonaws.com)
 
 **Example**:
@@ -156,6 +156,8 @@ Updates the current hostname's IP address in storage.
 
 **Flags**:
 - `-tender string` - Storage provider to use (default "gh")
+- `-beacon string` - Beacon provider to use (default "aws")
+  - Options: "haz" (icanhazip.com), "aws" (checkip.amazonaws.com)
 
 **Requirements**:
 - `PIPHOS_GITHUB_TOKEN` environment variable
@@ -163,7 +165,6 @@ Updates the current hostname's IP address in storage.
 **Example**:
 ```bash
 $ piphos push
-203.0.113.42
 ```
 
 ### Available Services
