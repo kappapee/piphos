@@ -224,9 +224,10 @@ func (gh *github) gistRequest(ctx context.Context, HTTPMethod, URL string, expec
 	if resp.StatusCode != expectedStatus {
 		return nil, fmt.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
-	responseBody, err := io.ReadAll(resp.Body)
+	limitedBody := io.LimitReader(resp.Body, config.MaxResponseBodySize)
+	data, err := io.ReadAll(limitedBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
-	return responseBody, nil
+	return data, nil
 }

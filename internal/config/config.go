@@ -7,6 +7,9 @@ const (
 	// HTTPClientTimeout is the maximum duration for HTTP requests.
 	HTTPClientTimeout = 10 * time.Second
 
+	// MaxResponseBodySize is the limit for the response size
+	MaxResponseBodySize = 10 << 20 // 10MB
+
 	// PiphosUserAgent is the User-Agent header value for HTTP requests.
 	PiphosUserAgent = "piphos/1.0"
 
