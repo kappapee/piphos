@@ -12,6 +12,7 @@ import (
 	"github.com/kappapee/piphos/internal/validate"
 )
 
+// web implements the Beacon interface using HTTP-based IP detection services.
 type web struct {
 	baseURL string
 	client  *http.Client
@@ -19,6 +20,7 @@ type web struct {
 	name    string
 }
 
+// newWeb creates a web beacon with the specified base URL.
 func newWeb(baseURL, name string) *web {
 	return &web{
 		baseURL: baseURL,
@@ -28,6 +30,8 @@ func newWeb(baseURL, name string) *web {
 	}
 }
 
+// Ping queries the web beacon service and returns the public IP address.
+// The response is validated to ensure it contains a valid IP address.
 func (b *web) Ping(ctx context.Context) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.baseURL, nil)
 	if err != nil {

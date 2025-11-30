@@ -17,6 +17,9 @@ const (
 	githubURL  = "https://api.github.com/gists"
 )
 
+// github implements the Tender interface using GitHub Gists as storage.
+// It stores hostname-to-IP mappings in a private gist identified by the
+// description "_piphos_" containing a single JSON file.
 type github struct {
 	baseURL string
 	client  *http.Client
@@ -25,6 +28,7 @@ type github struct {
 	token   string
 }
 
+// newGithub creates a GitHub tender with the provided authentication token.
 func newGithub(token string) *github {
 	return &github{
 		baseURL: githubURL,
@@ -39,6 +43,7 @@ func newGithub(token string) *github {
 	}
 }
 
+// gist represents the GitHub Gist API response structure.
 type gist struct {
 	ID          string              `json:"id"`
 	Description string              `json:"description"`
@@ -46,11 +51,14 @@ type gist struct {
 	Files       map[string]gistFile `json:"files"`
 }
 
+// gistFile represents a file within a GitHub Gist.
 type gistFile struct {
 	Filename string `json:"filename"`
 	Content  string `json:"content"`
 }
 
+// Pull retrieves all hostname-to-IP mappings from the piphos GitHub Gist.
+// Returns an error if the gist doesn't exist or cannot be parsed.
 func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 	gist, err := gh.readGist(ctx)
 	if err != nil {
@@ -71,6 +79,9 @@ func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
 	return gistContent, nil
 }
 
+// Push updates the IP address for the specified hostname in the GitHub Gist.
+// If no piphos gist exists, a new private gist is created.
+// If the hostname already has the same IP, no API call is made.
 func (gh *github) Push(ctx context.Context, localHostname, publicIP string) error {
 	gist, err := gh.readGist(ctx)
 	if err != nil {
@@ -88,12 +99,14 @@ func (gh *github) Push(ctx context.Context, localHostname, publicIP string) erro
 	if err := json.Unmarshal([]byte(gistContentString), &gistContent); err != nil {
 		return fmt.Errorf("failed to unmarshal content: %w", err)
 	}
-	if gistContent[localHostname] != publicIP {
-		return gh.updateGist(ctx, gist.ID, gistContent, localHostname, publicIP)
+	// Skip update if IP hasn't changed
+	if gistContent[localHostname] == publicIP {
+		return nil
 	}
-	return nil
+	return gh.updateGist(ctx, gist.ID, gistContent, localHostname, publicIP)
 }
 
+// createGist creates a new private GitHub Gist with the initial hostname-to-IP mapping.
 func (gh *github) createGist(ctx context.Context, localHostname, publicIP string) error {
 	gistContent := map[string]string{localHostname: publicIP}
 	content, err := json.Marshal(gistContent)
@@ -120,6 +133,8 @@ func (gh *github) createGist(ctx context.Context, localHostname, publicIP string
 	return nil
 }
 
+// readGist finds and retrieves the piphos gist.
+// Returns nil if no piphos gist exists, which is not considered an error.
 func (gh *github) readGist(ctx context.Context) (*gist, error) {
 	gistsResponseBody, err := gh.gistRequest(ctx, http.MethodGet, gh.baseURL, http.StatusOK, nil)
 	if err != nil {
@@ -129,6 +144,7 @@ func (gh *github) readGist(ctx context.Context) (*gist, error) {
 	if err := json.Unmarshal(gistsResponseBody, &gists); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
+	// Find the piphos gist by searching for the stamp description
 	var gistID string
 	for _, g := range gists {
 		if g.Description == config.PiphosStamp {
@@ -136,6 +152,7 @@ func (gh *github) readGist(ctx context.Context) (*gist, error) {
 			break
 		}
 	}
+	// No piphos gist exists yet, not an error
 	if gistID == "" {
 		return nil, nil
 	}
@@ -151,6 +168,7 @@ func (gh *github) readGist(ctx context.Context) (*gist, error) {
 	return &gist, nil
 }
 
+// updateGist modifies an existing gist to update the hostname-to-IP mapping.
 func (gh *github) updateGist(ctx context.Context, gistID string, gistContent map[string]string, localHostname, publicIP string) error {
 	gistContent[localHostname] = publicIP
 	content, err := json.Marshal(gistContent)
@@ -178,6 +196,8 @@ func (gh *github) updateGist(ctx context.Context, gistID string, gistContent map
 	return nil
 }
 
+// gistRequest executes an HTTP request to the GitHub Gist API.
+// It handles authentication, headers, and validates the response status code.
 func (gh *github) gistRequest(ctx context.Context, HTTPMethod, URL string, expectedStatus int, requestBody []byte) ([]byte, error) {
 	var requestBodyReader io.Reader
 	if requestBody != nil {
