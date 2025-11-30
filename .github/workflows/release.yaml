@@ -44,9 +44,9 @@ jobs:
           VERSION=${{ github.ref_name }}
           BINARY_NAME=piphos
           if [ "${{ matrix.os }}" = "windows" ]; then
-            go build -o ${BINARY_NAME}-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}.exe .
+            go build -o ${BINARY_NAME}-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}.exe ./cmd/...
           else
-            go build -o ${BINARY_NAME}-${VERSION}-${{ matrix.os }}-${{ matrix.arch }} .
+            go build -o ${BINARY_NAME}-${VERSION}-${{ matrix.os }}-${{ matrix.arch }} ./cmd/...
           fi
 
       - name: Upload artifacts
