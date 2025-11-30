@@ -47,69 +47,49 @@ func newGithub(token string) *github {
 type gist struct {
 	ID          string              `json:"id"`
 	Description string              `json:"description"`
-	Public      bool                `json:"public"`
 	Files       map[string]gistFile `json:"files"`
+	Public      bool                `json:"public"`
 }
 
 // gistFile represents a file within a GitHub Gist.
 type gistFile struct {
-	Filename string `json:"filename"`
-	Content  string `json:"content"`
+	Content   string `json:"content"`
+	Filename  string `json:"filename"`
+	Truncated bool   `json:"truncated"`
 }
 
 // Pull retrieves all hostname-to-IP mappings from the piphos GitHub Gist.
 // Returns an error if the gist doesn't exist or cannot be parsed.
 func (gh *github) Pull(ctx context.Context) (map[string]string, error) {
-	gist, err := gh.readGist(ctx)
+	result, _, err := gh.readGist(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if gist == nil {
-		return nil, fmt.Errorf("no piphos gist found")
-	}
-	gistPiphosFile, ok := gist.Files[config.PiphosStamp]
-	if !ok {
-		return nil, fmt.Errorf("gist missing file: %s", config.PiphosStamp)
-	}
-	gistContentString := gistPiphosFile.Content
-	var gistContent map[string]string
-	if err := json.Unmarshal([]byte(gistContentString), &gistContent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal content: %w", err)
-	}
-	return gistContent, nil
+	return result, nil
 }
 
 // Push updates the IP address for the specified hostname in the GitHub Gist.
 // If no piphos gist exists, a new private gist is created.
 // If the hostname already has the same IP, no API call is made.
 func (gh *github) Push(ctx context.Context, localHostname, publicIP string) error {
-	gist, err := gh.readGist(ctx)
+	gistPiphosFileContent, gistPiphosID, err := gh.readGist(ctx)
 	if err != nil {
 		return err
 	}
-	if gist == nil {
+	if gistPiphosFileContent == nil {
 		return gh.createGist(ctx, localHostname, publicIP)
 	}
-	gistPiphosFile, ok := gist.Files[config.PiphosStamp]
-	if !ok {
-		return fmt.Errorf("gist missing file: %s", config.PiphosStamp)
-	}
-	gistContentString := gistPiphosFile.Content
-	var gistContent map[string]string
-	if err := json.Unmarshal([]byte(gistContentString), &gistContent); err != nil {
-		return fmt.Errorf("failed to unmarshal content: %w", err)
-	}
 	// Skip update if IP hasn't changed
-	if gistContent[localHostname] == publicIP {
+	if gistPiphosFileContent[localHostname] == publicIP {
 		return nil
 	}
-	return gh.updateGist(ctx, gist.ID, gistContent, localHostname, publicIP)
+	return gh.updateGist(ctx, gistPiphosID, gistPiphosFileContent, localHostname, publicIP)
 }
 
 // createGist creates a new private GitHub Gist with the initial hostname-to-IP mapping.
 func (gh *github) createGist(ctx context.Context, localHostname, publicIP string) error {
-	gistContent := map[string]string{localHostname: publicIP}
-	content, err := json.Marshal(gistContent)
+	gistPiphosContent := map[string]string{localHostname: publicIP}
+	content, err := json.Marshal(gistPiphosContent)
 	if err != nil {
 		return fmt.Errorf("failed to marshal content: %w", err)
 	}
@@ -136,43 +116,54 @@ func (gh *github) createGist(ctx context.Context, localHostname, publicIP string
 // readGist finds and retrieves the piphos gist.
 // NOTE: The two API requests are necessary since there is no easier option to search by description and fetch a gist's file content together.
 // Returns nil if no piphos gist exists, which is not considered an error.
-func (gh *github) readGist(ctx context.Context) (*gist, error) {
+func (gh *github) readGist(ctx context.Context) (map[string]string, string, error) {
 	gistsResponseBody, err := gh.gistRequest(ctx, http.MethodGet, gh.baseURL, http.StatusOK, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to complete gist request: %w", err)
+		return nil, "", fmt.Errorf("failed to complete gist request: %w", err)
 	}
 	var gists []gist
 	if err := json.Unmarshal(gistsResponseBody, &gists); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	// Find the piphos gist by searching for the stamp description
-	var gistID string
+	var gistPiphosID string
 	for _, g := range gists {
 		if g.Description == config.PiphosStamp {
-			gistID = g.ID
+			gistPiphosID = g.ID
 			break
 		}
 	}
 	// No piphos gist exists yet, not an error
-	if gistID == "" {
-		return nil, nil
+	if gistPiphosID == "" {
+		return nil, "", nil
 	}
-	URL := fmt.Sprintf("%s/%s", gh.baseURL, gistID)
-	gistResponseBody, err := gh.gistRequest(ctx, http.MethodGet, URL, http.StatusOK, nil)
+	URL := fmt.Sprintf("%s/%s", gh.baseURL, gistPiphosID)
+	gistPiphosResponseBody, err := gh.gistRequest(ctx, http.MethodGet, URL, http.StatusOK, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to complete gist request: %w", err)
+		return nil, "", fmt.Errorf("failed to complete gist request: %w", err)
 	}
-	var gist gist
-	if err := json.Unmarshal(gistResponseBody, &gist); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	var gistPiphos gist
+	if err := json.Unmarshal(gistPiphosResponseBody, &gistPiphos); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	return &gist, nil
+	gistPiphosFile, ok := gistPiphos.Files[config.PiphosStamp]
+	if !ok {
+		return nil, "", fmt.Errorf("gist missing file: %s", config.PiphosStamp)
+	}
+	if gistPiphosFile.Truncated {
+		return nil, "", fmt.Errorf("gist file is too large and has been truncated, aborting")
+	}
+	var gistPiphosFileContent map[string]string
+	if err := json.Unmarshal([]byte(gistPiphosFile.Content), &gistPiphosFileContent); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal content: %w", err)
+	}
+	return gistPiphosFileContent, gistPiphos.ID, nil
 }
 
 // updateGist modifies an existing gist to update the hostname-to-IP mapping.
-func (gh *github) updateGist(ctx context.Context, gistID string, gistContent map[string]string, localHostname, publicIP string) error {
-	gistContent[localHostname] = publicIP
-	content, err := json.Marshal(gistContent)
+func (gh *github) updateGist(ctx context.Context, gistPiphosID string, fileContent map[string]string, localHostname, publicIP string) error {
+	fileContent[localHostname] = publicIP
+	content, err := json.Marshal(fileContent)
 	if err != nil {
 		return fmt.Errorf("failed to marshal content: %w", err)
 	}
@@ -190,7 +181,7 @@ func (gh *github) updateGist(ctx context.Context, gistID string, gistContent map
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	URL := fmt.Sprintf("%s/%s", gh.baseURL, gistID)
+	URL := fmt.Sprintf("%s/%s", gh.baseURL, gistPiphosID)
 	if _, err := gh.gistRequest(ctx, http.MethodPatch, URL, http.StatusOK, gistRequestBody); err != nil {
 		return fmt.Errorf("failed to complete gist request: %w", err)
 	}
