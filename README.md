@@ -34,7 +34,7 @@ make build
 
 1. Set your GitHub token (token with gist permissions):
    ```bash
-   export GITHUB_TOKEN=ghp_your_token_here
+   export PIPHOS_GITHUB_TOKEN=ghp_your_token_here
    ```
 
 2. Check your public IP:
@@ -84,7 +84,7 @@ Retrieves all hostname-to-IP mappings from storage.
   - Options: "gh" (GitHub Gists)
 
 **Requirements**:
-- `GITHUB_TOKEN` environment variable
+- `PIPHOS_GITHUB_TOKEN` environment variable
 
 **Example**:
 ```bash
@@ -103,7 +103,7 @@ Updates the current hostname's IP address in storage.
 - `-tender string` - Storage provider to use (default "gh")
 
 **Requirements**:
-- `GITHUB_TOKEN` environment variable
+- `PIPHOS_GITHUB_TOKEN` environment variable
 
 **Example**:
 ```bash
@@ -115,7 +115,7 @@ $ piphos push
 
 ### Environment Variables
 
-- **GITHUB_TOKEN**: GitHub personal access token with gist permissions (required for push/pull commands)
+- **PIPHOS_GITHUB_TOKEN**: GitHub personal access token with gist permissions (required for push/pull commands)
 
 ## Storage Format
 

@@ -33,7 +33,7 @@ func Ping(ctx context.Context, args []string) (string, error) {
 
 // Pull retrieves all hostname-to-IP mappings from the specified tender provider.
 // The tender provider can be specified with the -tender flag (default: "gh").
-// Requires GITHUB_TOKEN environment variable for the "gh" provider.
+// Requires PIPHOS_GITHUB_TOKEN environment variable for the "gh" provider.
 func Pull(ctx context.Context, args []string) (map[string]string, error) {
 	fs := flag.NewFlagSet("pull", flag.ExitOnError)
 	ts := fs.String("tender", "gh", "which tender provider to use")
@@ -48,7 +48,7 @@ func Pull(ctx context.Context, args []string) (map[string]string, error) {
 // Push updates the current hostname's IP address in the specified tender provider.
 // The tender provider can be specified with the -tender flag (default: "gh").
 // The hostname is automatically detected from the system.
-// Requires GITHUB_TOKEN environment variable for the "gh" provider.
+// Requires PIPHOS_GITHUB_TOKEN environment variable for the "gh" provider.
 func Push(ctx context.Context, args []string, ip string) error {
 	fs := flag.NewFlagSet("push", flag.ExitOnError)
 	ts := fs.String("tender", "gh", "which tender provider to use")

@@ -6,11 +6,11 @@
 //	piphos pull [-tender=PROVIDER]    # Retrieve all tracked hosts
 //	piphos push [-tender=PROVIDER]    # Update current hostname's IP
 //
-// The push and pull commands require the GITHUB_TOKEN environment variable.
+// The push and pull commands require the PIPHOS_GITHUB_TOKEN environment variable.
 //
 // Examples:
 //
-//	export GITHUB_TOKEN=ghp_xxx
+//	export PIPHOS_GITHUB_TOKEN=ghp_xxx
 //	piphos ping                    # 203.0.113.42
 //	piphos push                    # 203.0.113.42
 //	piphos pull                    # laptop: 203.0.113.42

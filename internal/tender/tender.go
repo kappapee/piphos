@@ -25,12 +25,12 @@ type Tender interface {
 }
 
 // New creates a Tender instance for the specified provider.
-// Supported providers are "gh" (GitHub Gists, requires GITHUB_TOKEN environment variable).
+// Supported providers are "gh" (GitHub Gists, requires PIPHOS_GITHUB_TOKEN environment variable).
 // Returns an error if the provider is unknown or required credentials are missing.
 func New(tender string) (Tender, error) {
 	switch tender {
 	case "gh":
-		token := os.Getenv("GITHUB_TOKEN")
+		token := os.Getenv("PIPHOS_GITHUB_TOKEN")
 		err := validate.Token(token)
 		if err != nil {
 			return nil, err
