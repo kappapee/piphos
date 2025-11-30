@@ -205,6 +205,7 @@ The gist contains a single JSON file mapping hostnames to IP addresses:
 - GitHub for providing the Gists API
 - The Go team and community for excellent tooling and libraries
 - [boot.dev](https://www.boot.dev/) for creating an amazing learning platform
+- The documentation and this README have been created in conversations with Claude Sonnet 4.5
 
 ## License
 
