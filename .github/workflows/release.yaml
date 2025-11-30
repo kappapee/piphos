@@ -1,13 +1,12 @@
 name: Release
 on:
-  workflow_run:
-    workflows: ["Check"]
-    types: [completed]
-    branches: ["main"]
+  push:
+    tags:
+      - "v*"
+
 jobs:
   build:
     name: Build binaries
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -27,8 +26,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -66,6 +63,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
       - name: Download artifacts
         uses: actions/download-artifact@v6
         with:
