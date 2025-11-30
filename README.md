@@ -1,12 +1,20 @@
 # Piphos
 
-A lightweight utility for tracking dynamic IP addresses using GitHub Gists.
+A lightweight utility for tracking dynamic IP addresses.
 
 ## Overview
 
-Piphos helps you track public IP addresses for multiple hosts by storing hostname-to-IP mappings in a private GitHub Gist. This is useful for finding machines with dynamic IPs without paying for dynamic DNS services.
+Piphos helps you track public IP addresses for multiple hosts by storing hostname-to-IP mappings.
+This is useful for finding machines with dynamic IPs without paying for dynamic DNS services.
+
+Currently, only private GitHub Gists are supported for storing mappings, so a GitHub account is necessary.
+The utility can be extended to support a variety of beacons (services for discovering public IP address) and tenders (services for storing data).
 
 ## Installation
+
+### Downloading a binary
+
+You can download a binary for your OS and system architecture from the Releases page.
 
 ### Using go install
 
@@ -14,7 +22,7 @@ Piphos helps you track public IP addresses for multiple hosts by storing hostnam
 go install github.com/kappapee/piphos/cmd/piphos@latest
 ```
 
-### Build from source
+### Building from source
 
 ```bash
 git clone https://github.com/kappapee/piphos.git
@@ -24,7 +32,7 @@ make build
 
 ## Quick Start
 
-1. Set your GitHub token:
+1. Set your GitHub token (token with gist permissions):
    ```bash
    export GITHUB_TOKEN=ghp_your_token_here
    ```
@@ -109,9 +117,10 @@ $ piphos push
 
 - **GITHUB_TOKEN**: GitHub personal access token with gist permissions (required for push/pull commands)
 
-### Storage Format
+## Storage Format
 
-Piphos stores data in a private GitHub Gist with the description "_piphos_". The gist contains a single JSON file mapping hostnames to IP addresses:
+Piphos stores data in a private GitHub Gist with the description "_piphos_".
+The gist contains a single JSON file mapping hostnames to IP addresses:
 
 ```json
 {

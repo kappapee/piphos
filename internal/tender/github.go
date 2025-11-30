@@ -134,6 +134,7 @@ func (gh *github) createGist(ctx context.Context, localHostname, publicIP string
 }
 
 // readGist finds and retrieves the piphos gist.
+// NOTE: The two API requests are necessary since there is no easier option to search by description and fetch a gist's file content together.
 // Returns nil if no piphos gist exists, which is not considered an error.
 func (gh *github) readGist(ctx context.Context) (*gist, error) {
 	gistsResponseBody, err := gh.gistRequest(ctx, http.MethodGet, gh.baseURL, http.StatusOK, nil)
