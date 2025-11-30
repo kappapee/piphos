@@ -50,7 +50,7 @@ func main() {
 			fmt.Fprintf(os.Stdout, "%s: %s\n", k, v)
 		}
 	case "push":
-		publicIP, err := exec.Ping(ctx, []string{"beacon"})
+		publicIP, err := exec.Ping(ctx, []string{})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to check public IP address: %v\n", err)
 			os.Exit(1)
