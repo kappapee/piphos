@@ -172,7 +172,7 @@ $ piphos push
 
 | Name | Identifier | URL | Description |
 |------|------------|-----|-------------|
-| icanhazip | `haz` | https://ipv4.icanhazip.com | Simple IP detection service |
+| icanhazip | `haz` | https://icanhazip.com | Simple IP detection service |
 | AWS CheckIP | `aws` | https://checkip.amazonaws.com | Amazon's IP detection service |
 
 #### Tender Services

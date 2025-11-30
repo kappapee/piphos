@@ -52,9 +52,10 @@ func (b *web) Ping(ctx context.Context) (string, error) {
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("unexpected response status from beacon %s: %d", b.name, resp.StatusCode)
 	}
-	content, err := io.ReadAll(resp.Body)
+	limitedBody := io.LimitReader(resp.Body, config.MaxResponseBodySize)
+	content, err := io.ReadAll(limitedBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response from beacon %s: %w", b.name, err)
+		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 	publicIP := strings.TrimSpace(string(content))
 	if err = validate.IP(publicIP); err != nil {

@@ -24,7 +24,7 @@ type Beacon interface {
 func New(beacon string) (Beacon, error) {
 	switch beacon {
 	case "haz":
-		return newWeb("https://ipv4.icanhazip.com", "haz"), nil
+		return newWeb("https://icanhazip.com", "haz"), nil
 	case "aws":
 		return newWeb("https://checkip.amazonaws.com", "aws"), nil
 	default:

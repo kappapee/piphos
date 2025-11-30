@@ -2,9 +2,9 @@
 //
 // Usage:
 //
-//	piphos ping [-beacon=PROVIDER]    # Detect public IP
-//	piphos pull [-tender=PROVIDER]    # Retrieve all tracked hosts
-//	piphos push [-tender=PROVIDER]    # Update current hostname's IP
+//	piphos ping [-beacon=PROVIDER]                     # Detect public IP
+//	piphos pull [-tender=PROVIDER]                     # Retrieve all tracked hosts
+//	piphos push [-tender=PROVIDER -beacon=PROVIDER]    # Update current hostname's IP
 //
 // The push and pull commands require the PIPHOS_GITHUB_TOKEN environment variable.
 //
@@ -40,27 +40,21 @@ func main() {
 		}
 		fmt.Fprintln(os.Stdout, publicIP)
 	case "pull":
-		hosts, err := exec.Pull(ctx, os.Args[2:])
+		data, err := exec.Pull(ctx, os.Args[2:])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to run pull command: %v\n", err)
 			exec.Help()
 			os.Exit(1)
 		}
-		for k, v := range hosts {
+		for k, v := range data {
 			fmt.Fprintf(os.Stdout, "%s: %s\n", k, v)
 		}
 	case "push":
-		publicIP, err := exec.Ping(ctx, []string{})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to check public IP address: %v\n", err)
-			os.Exit(1)
-		}
-		if err := exec.Push(ctx, os.Args[2:], publicIP); err != nil {
+		if err := exec.Push(ctx, os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to run push command: %v\n", err)
 			exec.Help()
 			os.Exit(1)
 		}
-		fmt.Fprintln(os.Stdout, publicIP)
 	case "help":
 		exec.Help()
 	default:
