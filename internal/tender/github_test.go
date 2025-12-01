@@ -109,7 +109,7 @@ func TestGithubPull_TruncatedGist(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gists)
-		case 2:	
+		case 2:
 			gistResponse := gist{
 				ID:          gistID,
 				Description: config.PiphosStamp,
