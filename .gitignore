@@ -1,6 +1,5 @@
 # Binaries
 bin/
-piphos*
 
 # Tests
 coverage.out
