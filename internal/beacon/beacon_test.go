@@ -31,7 +31,6 @@ func TestNew(t *testing.T) {
 			expectedError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, err := New(tt.beacon)
@@ -74,15 +73,12 @@ func TestNewBeaconURLs(t *testing.T) {
 			expectedName: "aws",
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, err := New(tt.beacon)
 			if err != nil {
 				t.Fatalf("expected no error but got: %v", err)
 			}
-
-			// Type assert to access internal fields for verification
 			if web, ok := b.(*web); ok {
 				if web.baseURL != tt.expectedURL {
 					t.Errorf("expected baseURL %s but got %s", tt.expectedURL, web.baseURL)

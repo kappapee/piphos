@@ -31,19 +31,15 @@ func TestNew(t *testing.T) {
 			expectedError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variable for the test
 			if tt.token != "" {
 				os.Setenv("PIPHOS_GITHUB_TOKEN", tt.token)
 			} else {
 				os.Unsetenv("PIPHOS_GITHUB_TOKEN")
 			}
 			defer os.Unsetenv("PIPHOS_GITHUB_TOKEN")
-
 			tender, err := New(tt.tender)
-
 			if tt.expectedError {
 				if err == nil {
 					t.Error("expected error but got nil")

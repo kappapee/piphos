@@ -26,7 +26,6 @@ func TestCommand(t *testing.T) {
 			expectedError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Command(tt.nonFlagArgs)
@@ -97,7 +96,6 @@ func TestIP(t *testing.T) {
 			expectedError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := IP(tt.ip)
@@ -133,7 +131,6 @@ func TestToken(t *testing.T) {
 			expectedError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Token(tt.token)

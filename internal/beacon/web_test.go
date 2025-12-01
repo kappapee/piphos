@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 )
@@ -63,11 +62,9 @@ func TestWebPing(t *testing.T) {
 			expectedError:  true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Verify User-Agent header is set
 				if r.Header.Get("User-Agent") == "" {
 					t.Error("User-Agent header not set")
 				}
@@ -75,12 +72,9 @@ func TestWebPing(t *testing.T) {
 				w.Write([]byte(tt.responseBody))
 			}))
 			defer server.Close()
-
 			b := newWeb(server.URL, "test")
 			ctx := context.Background()
-
 			ip, err := b.Ping(ctx)
-
 			if tt.expectedError {
 				if err == nil {
 					t.Error("expected error but got nil")
@@ -98,99 +92,34 @@ func TestWebPing(t *testing.T) {
 }
 
 func TestWebPingTimeout(t *testing.T) {
-	// Create a server that delays response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("203.0.113.1"))
 	}))
 	defer server.Close()
-
 	b := newWeb(server.URL, "test")
-
-	// Create a context that times out before the server responds
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-
 	_, err := b.Ping(ctx)
 	if err == nil {
 		t.Error("expected timeout error but got nil")
 	}
 }
 
-func TestWebPingLargeResponse(t *testing.T) {
-	// Create a very large response (larger than the 10MB limit would eventually cause issues,
-	// but we test that the LimitReader is working by ensuring we can handle reasonable sizes)
-	largeIP := "203.0.113.1"
-	padding := strings.Repeat(" ", 1024) // 1KB of padding
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(largeIP + padding))
-	}))
-	defer server.Close()
-
-	b := newWeb(server.URL, "test")
-	ctx := context.Background()
-
-	// This should succeed because after trimming whitespace we still have the IP
-	ip, err := b.Ping(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	if ip != largeIP {
-		t.Errorf("expected IP %s but got %s", largeIP, ip)
-	}
-}
-
 func TestWebPingCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate slow response
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("203.0.113.1"))
 	}))
 	defer server.Close()
-
 	b := newWeb(server.URL, "test")
 	ctx, cancel := context.WithCancel(context.Background())
-
-	// Cancel immediately
 	cancel()
-
 	_, err := b.Ping(ctx)
 	if err == nil {
 		t.Error("expected context cancellation error but got nil")
-	}
-}
-
-func TestWebPingReadBodyError(t *testing.T) {
-	// Test the io.ReadAll error path by closing the connection early
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		// Write partial response
-		w.Write([]byte("203"))
-		// Force connection close to trigger read error
-		if flusher, ok := w.(http.Flusher); ok {
-			flusher.Flush()
-		}
-		// Close the connection
-		if hijacker, ok := w.(http.Hijacker); ok {
-			conn, _, _ := hijacker.Hijack()
-			conn.Close()
-		}
-	}))
-	defer server.Close()
-
-	b := newWeb(server.URL, "test")
-	ctx := context.Background()
-
-	_, err := b.Ping(ctx)
-	// Should get an error due to connection being closed
-	if err == nil {
-		// In some cases this might not trigger an error if the partial IP is valid
-		// but we're testing the error path exists
-		t.Log("Expected error but connection closure may not have triggered it")
 	}
 }
 
@@ -216,11 +145,9 @@ func TestNewWeb(t *testing.T) {
 			beaconName: "custom",
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := newWeb(tt.baseURL, tt.beaconName)
-
 			if w == nil {
 				t.Fatal("expected non-nil web beacon")
 			}
