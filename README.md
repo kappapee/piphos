@@ -4,22 +4,6 @@ A lightweight CLI utility for tracking dynamic IP addresses.
 
 It provides an easy way to detect your current public IP address and store it in a cloud service for remote access.
 
-## Overview
-
-Piphos helps you track public IP addresses for multiple hosts by storing hostname-to-IP mappings.
-This is useful for finding machines with dynamic IPs without paying for dynamic DNS services.
-
-Piphos consists of two main components:
-
-- **Beacons**: Services that detect your public IP address (like icanhazip.com, AWS checkip)
-- **Tenders**: Services that store your IP addresses (like GitHub Gists)
-
-This allows you to easily track and access your homelab from anywhere, even when your ISP changes your IP address.
-
-Currently, only private GitHub Gists are supported for storing mappings, so a GitHub account is necessary.
-
-The utility can be extended to support a variety of beacons (services for discovering public IP address) and tenders (services for storing data).
-
 ## Infomercial
 
 Tired of playing IP address hide-and-seek with your homelab?
@@ -62,10 +46,25 @@ piphos pull  # Shows: "home-server: 203.0.113.42"
 ssh admin@203.0.113.42  # You're in!
 ```
 
+## Overview
+
+Piphos helps you track public IP addresses for multiple hosts by storing hostname-to-IP mappings.
+This is useful for finding machines with dynamic IPs without paying for dynamic DNS services.
+
+Piphos consists of two main components:
+
+- **Beacons**: Services that detect your public IP address (like icanhazip.com, AWS checkip)
+- **Tenders**: Services that store your IP addresses (like GitHub Gists)
+
+This allows you to easily track and access your homelab from anywhere, even when your ISP changes your IP address.
+
+Currently, only private GitHub Gists are supported for storing mappings, so a GitHub account is necessary.
+
+The utility can be extended to support a variety of beacons (services for discovering public IP address) and tenders (services for storing data).
+
 ## Installation
 
 ### Downloading a binary
-
 
 Download the latest binary for your OS and system architecture from the [releases page](https://github.com/kappapee/piphos/releases) and place it in your `$PATH`.
 
