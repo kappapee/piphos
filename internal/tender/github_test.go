@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,11 +41,14 @@ func TestGithubPull_WithGist(t *testing.T) {
 		"host1": "203.0.113.1",
 		"host2": "203.0.113.2",
 	}
-	content, _ := json.Marshal(hostIPMap)
-	callCount := 0
+	content, err := json.Marshal(hostIPMap)
+	if err != nil {
+		t.Fatalf("failed to marshal test data: %v", err)
+	}
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		switch callCount {
+		callCount.Add(1)
+		switch callCount.Load() {
 		case 1:
 			gists := []gist{
 				{
@@ -69,7 +73,7 @@ func TestGithubPull_WithGist(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gistResponse)
 		default:
-			t.Fatalf("expected only 2 server calls, got %d", callCount)
+			t.Fatalf("expected only 2 server calls, got %d", callCount.Load())
 		}
 	}))
 	defer server.Close()
@@ -96,10 +100,10 @@ func TestGithubPull_WithGist(t *testing.T) {
 
 func TestGithubPull_TruncatedGist(t *testing.T) {
 	gistID := "test-gist-id"
-	callCount := 0
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		switch callCount {
+		callCount.Add(1)
+		switch callCount.Load() {
 		case 1:
 			gists := []gist{
 				{
@@ -124,7 +128,7 @@ func TestGithubPull_TruncatedGist(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gistResponse)
 		default:
-			t.Fatalf("expected only 2 server calls, got %d", callCount)
+			t.Fatalf("expected only 2 server calls, got %d", callCount.Load())
 		}
 	}))
 	defer server.Close()
@@ -142,10 +146,10 @@ func TestGithubPull_TruncatedGist(t *testing.T) {
 
 func TestGithubPull_MissingFile(t *testing.T) {
 	gistID := "test-gist-id"
-	callCount := 0
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		switch callCount {
+		callCount.Add(1)
+		switch callCount.Load() {
 		case 1:
 			gists := []gist{
 				{
@@ -164,7 +168,7 @@ func TestGithubPull_MissingFile(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gistResponse)
 		default:
-			t.Fatalf("expected only 2 server calls, got %d", callCount)
+			t.Fatalf("expected only 2 server calls, got %d", callCount.Load())
 		}
 	}))
 	defer server.Close()
@@ -233,12 +237,15 @@ func TestGithubPush_UpdateExistingGist(t *testing.T) {
 	existingContent := map[string]string{
 		"otherhost": "203.0.113.1",
 	}
-	content, _ := json.Marshal(existingContent)
-	callCount := 0
+	content, err := json.Marshal(existingContent)
+	if err != nil {
+		t.Fatalf("failed to marshal test data: %v", err)
+	}
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
+		callCount.Add(1)
 		switch {
-		case r.Method == http.MethodGet && callCount == 1:
+		case r.Method == http.MethodGet && callCount.Load() == 1:
 			gists := []gist{
 				{
 					ID:          gistID,
@@ -247,7 +254,7 @@ func TestGithubPush_UpdateExistingGist(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gists)
-		case r.Method == http.MethodGet && callCount == 2:
+		case r.Method == http.MethodGet && callCount.Load() == 2:
 			gistResponse := gist{
 				ID:          gistID,
 				Description: config.PiphosStamp,
@@ -287,8 +294,7 @@ func TestGithubPush_UpdateExistingGist(t *testing.T) {
 	gh := newGithub("test-token")
 	gh.baseURL = server.URL
 	ctx := context.Background()
-	err := gh.Push(ctx, hostname, newIP)
-	if err != nil {
+	if err := gh.Push(ctx, hostname, newIP); err != nil {
 		t.Errorf("expected no error but got: %v", err)
 	}
 }
@@ -300,13 +306,16 @@ func TestGithubPush_SkipUnchangedIP(t *testing.T) {
 	existingContent := map[string]string{
 		hostname: sameIP,
 	}
-	content, _ := json.Marshal(existingContent)
-	callCount := 0
+	content, err := json.Marshal(existingContent)
+	if err != nil {
+		t.Fatalf("failed to marshal test data: %v", err)
+	}
+	var callCount atomic.Int32
 	patchCalled := false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
+		callCount.Add(1)
 		switch {
-		case r.Method == http.MethodGet && callCount == 1:
+		case r.Method == http.MethodGet && callCount.Load() == 1:
 			gists := []gist{
 				{
 					ID:          gistID,
@@ -315,7 +324,7 @@ func TestGithubPush_SkipUnchangedIP(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gists)
-		case r.Method == http.MethodGet && callCount == 2:
+		case r.Method == http.MethodGet && callCount.Load() == 2:
 			gistResponse := gist{
 				ID:          gistID,
 				Description: config.PiphosStamp,
@@ -340,8 +349,7 @@ func TestGithubPush_SkipUnchangedIP(t *testing.T) {
 	gh := newGithub("test-token")
 	gh.baseURL = server.URL
 	ctx := context.Background()
-	err := gh.Push(ctx, hostname, sameIP)
-	if err != nil {
+	if err := gh.Push(ctx, hostname, sameIP); err != nil {
 		t.Errorf("expected no error but got: %v", err)
 	}
 	if patchCalled {
@@ -401,10 +409,10 @@ func TestGithubInvalidJSON(t *testing.T) {
 
 func TestGithubPull_InvalidFileContent(t *testing.T) {
 	gistID := "test-gist-id"
-	callCount := 0
+	var callCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		switch callCount {
+		callCount.Add(1)
+		switch callCount.Load() {
 		case 1:
 			gists := []gist{
 				{
@@ -429,7 +437,7 @@ func TestGithubPull_InvalidFileContent(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(gistResponse)
 		default:
-			t.Fatalf("expected only 2 server calls, got %d", callCount)
+			t.Fatalf("expected only 2 server calls, got %d", callCount.Load())
 		}
 	}))
 	defer server.Close()
